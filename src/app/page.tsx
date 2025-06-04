@@ -1,6 +1,7 @@
 import SidebarLayout from "@/components/layouts/SidebarLayout";
 import AdCarousel from "@/components/AdCarousel";
 import Header from "@/components/Header";
+import GraphExample from "@/components/GraphExample";
 
 const images = [
   "https://via.placeholder.com/800x200?text=Ad+1",
@@ -19,8 +20,9 @@ export default function Home() {
         <div className="col-span-4">
           <div className="rounded border p-4 text-center">날씨 예시</div>
         </div>
-        <div className="col-span-8">
-          <div className="rounded border p-4 text-center">그래프 예시</div>
+        <div className="col-span-8 space-y-4">
+          <GraphExample />
+          <GraphExample />
         </div>
       </div>
     </SidebarLayout>
