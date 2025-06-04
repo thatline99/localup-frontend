@@ -1,13 +1,27 @@
 import SidebarLayout from "@/components/layouts/SidebarLayout";
+import AdCarousel from "@/components/AdCarousel";
+import Header from "@/components/Header";
+
+const images = [
+  "https://via.placeholder.com/800x200?text=Ad+1",
+  "https://via.placeholder.com/800x200?text=Ad+2",
+  "https://via.placeholder.com/800x200?text=Ad+3",
+];
 
 export default function Home() {
   return (
     <SidebarLayout
       sidebar={<nav className="p-2">Sidebar</nav>}
-      header={<h1 className="text-xl font-semibold">Header</h1>}
+      header={<Header />}
     >
-      <div className="flex h-full items-center justify-center">
-        <p className="text-4xl font-bold">홈페이지 Develop 2</p>
+      <AdCarousel images={images} />
+      <div className="mt-4 grid grid-cols-12 gap-4">
+        <div className="col-span-4">
+          <div className="rounded border p-4 text-center">날씨 예시</div>
+        </div>
+        <div className="col-span-8">
+          <div className="rounded border p-4 text-center">그래프 예시</div>
+        </div>
       </div>
     </SidebarLayout>
   );
