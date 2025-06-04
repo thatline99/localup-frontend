@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -68,6 +69,13 @@ export default function SignInPage() {
           className="w-full rounded bg-blue-600 py-2 font-semibold text-white hover:bg-blue-700"
         >
           Sign In
+        </button>
+        <button
+          type="button"
+          onClick={() => signIn("kakao")}
+          className="w-full rounded bg-yellow-400 py-2 font-semibold text-black hover:bg-yellow-500"
+        >
+          Sign in with Kakao
         </button>
       </form>
     </div>
