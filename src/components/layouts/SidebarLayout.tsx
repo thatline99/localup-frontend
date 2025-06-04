@@ -26,14 +26,17 @@ export default function SidebarLayout({
       <aside
         className={`fixed inset-y-0 left-0 z-20 w-64 border-r bg-background p-4 transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"} md:static md:translate-x-0`}
       >
-        <button
-          type="button"
-          className="mb-4 rounded border px-2 py-1 md:hidden"
-          onClick={() => setOpen(false)}
-        >
-          닫기
-        </button>
-        {sidebar}
+        <div className="mb-4 flex items-center justify-between md:hidden">
+          {sidebar}
+          <button
+            type="button"
+            className="rounded border px-2 py-1"
+            onClick={() => setOpen(false)}
+          >
+            닫기
+          </button>
+        </div>
+        <div className="hidden md:block">{sidebar}</div>
       </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b p-4">
