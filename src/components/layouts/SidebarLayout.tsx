@@ -13,20 +13,22 @@ export default function SidebarLayout({
   header,
   children,
 }: SidebarLayoutProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
-      {open && (
-        <aside className="w-64 border-r bg-background p-4">{sidebar}</aside>
-      )}
+    <div className="flex min-h-screen overflow-x-hidden">
+      <aside
+        className={`fixed inset-y-0 left-0 z-20 w-64 border-r bg-background p-4 transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"} md:static md:translate-x-0`}
+      >
+        {sidebar}
+      </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b p-4">
           <div className="flex items-center gap-2">
             {header}
             <button
               type="button"
-              className="rounded border px-2 py-1"
+              className="rounded border px-2 py-1 md:hidden"
               onClick={() => setOpen((prev) => !prev)}
             >
               {open ? "닫기" : "열기"}
