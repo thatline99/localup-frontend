@@ -21,7 +21,7 @@ export default function Home() {
           <div className="rounded border p-4 text-center">날씨 예시</div>
         </div>
         <div className="col-span-8 space-y-4">
-          <GraphExample />
+          <div className="rounded border p-4 text-center">그래프 예시</div>
           <GraphExample />
         </div>
       </div>
