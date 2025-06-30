@@ -99,12 +99,13 @@ export default function SignInPage() {
                 onClick={() => {
                   console.log('카카오 로그인');
                 }}
-                className="w-full h-11 flex items-center justify-center rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
+                className="relative w-full h-11 rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#FEE500' }}
               >
                 <img
                   src="/images/auth/kakao-login-button.png"
                   alt="카카오 로그인"
-                  className="h-full w-auto"
+                  className="absolute inset-0 w-full h-full object-contain"
                 />
               </button>
             </form>
