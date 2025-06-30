@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 export default function AdCarousel({ images }: { images: string[] }) {
   const [index, setIndex] = useState(0);
@@ -18,12 +19,15 @@ export default function AdCarousel({ images }: { images: string[] }) {
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
         {images.map((src, i) => (
-          <img
-            key={i}
-            src={src}
-            alt={`Ad ${i}`}
-            className="h-48 w-full flex-shrink-0 object-cover"
-          />
+          <div key={i} className="relative h-48 w-full flex-shrink-0">
+            <Image
+              src={src}
+              alt={`Ad ${i}`}
+              fill
+              className="object-cover"
+              priority={i === 0}
+            />
+          </div>
         ))}
       </div>
     </div>

@@ -1,28 +1,21 @@
-import SidebarLayout from "@/components/layouts/SidebarLayout";
-import AdCarousel from "@/components/AdCarousel";
-import Header from "@/components/Header";
-
-const images = [
-  "https://via.placeholder.com/800x200?text=Ad+1",
-  "https://via.placeholder.com/800x200?text=Ad+2",
-  "https://via.placeholder.com/800x200?text=Ad+3",
-];
+import { Hero } from "@/components/landing/Hero";
+import { Features } from "@/components/landing/Features";
+import { Testimonials } from "@/components/landing/Testimonials";
+import { CTA } from "@/components/landing/CTA";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { Footer } from "@/components/landing/Footer";
 
 export default function Home() {
   return (
-    <SidebarLayout
-      sidebar={<nav className="p-2">Sidebar</nav>}
-      header={<Header />}
-    >
-      <AdCarousel images={images} />
-      <div className="mt-4 grid grid-cols-12 gap-4">
-        <div className="col-span-4">
-          <div className="rounded border p-4 text-center">날씨 예시</div>
-        </div>
-        <div className="col-span-8">
-          <div className="rounded border p-4 text-center">그래프 예시</div>
-        </div>
-      </div>
-    </SidebarLayout>
+    <div className="min-h-screen bg-gradient-to-b from-white to-neutral-50">
+      <LandingHeader />
+      <main>
+        <Hero />
+        <Features />
+        <Testimonials />
+        <CTA />
+      </main>
+      <Footer />
+    </div>
   );
 }
