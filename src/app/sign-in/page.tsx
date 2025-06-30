@@ -94,20 +94,19 @@ export default function SignInPage() {
                 </div>
               </div>
 
-              <Button 
-                variant="outline" 
-                className="w-full" 
+              <button
                 type="button"
                 onClick={() => {
                   console.log('카카오 로그인');
                 }}
+                className="w-full h-11 flex items-center justify-center rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                  <path fill="#FEE500" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"/>
-                  <path fill="#000000" d="M12 4.146c4.373 0 7.854 3.48 7.854 7.854 0 4.373-3.481 7.854-7.854 7.854-1.827 0-3.544-.609-4.908-1.66l-3.125 1.035a.481.481 0 01-.611-.607l1.046-3.146a7.818 7.818 0 01-1.656-4.83c0-4.374 3.481-7.854 7.854-7.854z"/>
-                </svg>
-                카카오톡으로 로그인
-              </Button>
+                <img
+                  src="/images/auth/kakao-login-button.png"
+                  alt="카카오 로그인"
+                  className="h-full w-auto"
+                />
+              </button>
             </form>
             
             <div className="text-center mt-6 text-sm text-neutral-600">
