@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui';
+import { signOut, useSession } from 'next-auth/react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -13,10 +14,51 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { data: session } = useSession();
   
-  const handleLogout = () => {
-    // TODO: 실제 로그아웃 로직 추가 (세션 클리어 등)
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      console.log("로그아웃 시작");
+      
+      // 카카오 로그인인 경우 카카오 로그아웃도 함께 처리
+      if (session?.user?.provider === 'kakao') {
+        console.log("카카오 로그아웃 처리");
+        
+        // NextAuth 로그아웃 먼저 실행
+        await signOut({ 
+          callbackUrl: '/sign-in',
+          redirect: false  // 자동 리다이렉트 비활성화
+        });
+        
+        // 카카오 로그아웃 처리
+        try {
+          // 카카오 SDK가 로드되어 있는 경우 카카오 로그아웃 실행
+          if (typeof window !== 'undefined' && (window as any).Kakao) {
+            console.log("카카오 SDK로 로그아웃 처리");
+            (window as any).Kakao.Auth.logout(() => {
+              console.log("카카오 로그아웃 완료");
+              router.push('/sign-in');
+            });
+          } else {
+            console.log("카카오 SDK 없음 - 일반 로그아웃만 처리");
+            router.push('/sign-in');
+          }
+        } catch (error) {
+          console.error("카카오 로그아웃 처리 중 오류:", error);
+          router.push('/sign-in');
+        }
+      } else {
+        // 일반 로그인인 경우
+        await signOut({ 
+          callbackUrl: '/sign-in',
+          redirect: true 
+        });
+      }
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+      // 오류 발생 시에도 로그인 페이지로 이동
+      router.push('/sign-in');
+    }
   };
 
   const navigation = [
