@@ -4,12 +4,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Card, CardHeader, CardContent } from '@/components/ui';
-import { BusinessType } from '@/types';
+import { BusinessType, CustomerSegment, CustomerSegmentLabels } from '../../types';
 
 export default function SignUpPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -17,9 +20,14 @@ export default function SignUpPage() {
     passwordConfirm: '',
     businessName: '',
     businessType: '',
-    businessSubType: '',
+    businessSubType: '', // businessItem으로 매핑될 예정
     registrationNumber: '',
     address: '',
+    addressDetail: '',
+    sigunguCode: '',
+    zipCode: '',
+    latitude: 0,
+    longitude: 0,
     operatingHours: {
       monday: { open: '09:00', close: '22:00', isOpen: true },
       tuesday: { open: '09:00', close: '22:00', isOpen: true },
@@ -31,7 +39,7 @@ export default function SignUpPage() {
     },
     averagePrice: '',
     capacity: '',
-    targetCustomers: [] as string[],
+    targetCustomers: [] as CustomerSegment[],
     marketingConsent: false,
   });
 
@@ -49,18 +57,85 @@ export default function SignUpPage() {
     [BusinessType.EXPERIENCE]: ['액티비티', '문화체험', '투어', '워크샵', '기타'],
   };
 
-  const targetCustomerOptions = [
-    '가족 단위',
-    '커플/연인',
-    '비즈니스',
-    '단체/모임',
-    '1인 여행객',
-    '외국인 관광객',
-  ];
+  const targetCustomerOptions = Object.values(CustomerSegment);
 
+  const validateStep = (stepNumber: number): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    switch (stepNumber) {
+      case 1:
+        if (!formData.email) {
+          newErrors.email = '이메일을 입력해주세요.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          newErrors.email = '올바른 이메일 형식이 아닙니다.';
+        }
+
+        if (!formData.password) {
+          newErrors.password = '비밀번호를 입력해주세요.';
+        } else if (formData.password.length < 8) {
+          newErrors.password = '비밀번호는 8자 이상이어야 합니다.';
+        }
+
+        if (!formData.passwordConfirm) {
+          newErrors.passwordConfirm = '비밀번호 확인을 입력해주세요.';
+        } else if (formData.password !== formData.passwordConfirm) {
+          newErrors.passwordConfirm = '비밀번호가 일치하지 않습니다.';
+        }
+
+        if (!termsAccepted) {
+          newErrors.terms = '서비스 이용약관에 동의해주세요.';
+        }
+
+        if (!privacyAccepted) {
+          newErrors.privacy = '개인정보 처리방침에 동의해주세요.';
+        }
+        break;
+
+      case 2:
+        if (!formData.businessName) {
+          newErrors.businessName = '업체명을 입력해주세요.';
+        }
+        if (!formData.businessType) {
+          newErrors.businessType = '업종을 선택해주세요.';
+        }
+        if (!formData.businessSubType) {
+          newErrors.businessSubType = '세부 업종을 선택해주세요.';
+        }
+        if (!formData.registrationNumber) {
+          newErrors.registrationNumber = '사업자등록번호를 입력해주세요.';
+        }
+        if (!formData.address) {
+          newErrors.address = '업체 주소를 입력해주세요.';
+        }
+        if (!formData.zipCode) {
+          newErrors.zipCode = '우편번호를 입력해주세요.';
+        }
+        if (!formData.sigunguCode) {
+          newErrors.sigunguCode = '시군구 코드를 입력해주세요.';
+        }
+        break;
+
+      case 3:
+        if (!formData.averagePrice) {
+          newErrors.averagePrice = '평균 객단가를 입력해주세요.';
+        }
+        if (!formData.capacity) {
+          newErrors.capacity = '좌석 수를 입력해주세요.';
+        }
+        if (formData.targetCustomers.length === 0) {
+          newErrors.targetCustomers = '주요 고객층을 최소 하나 선택해주세요.';
+        }
+        break;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleNext = () => {
-    if (step < 4) setStep(step + 1);
+    if (validateStep(step) && step < 4) {
+      setStep(step + 1);
+    }
   };
 
   const handlePrev = () => {
@@ -69,12 +144,70 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 모든 단계 validation 체크
+    const allStepsValid = [1, 2, 3].every(stepNum => validateStep(stepNum));
+    
+    if (!allStepsValid) {
+      return;
+    }
+    
     setLoading(true);
     
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      // 1. 회원가입 API 호출
+      const signupResponse = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        }),
+      });
+
+      const signupData = await signupResponse.json();
+
+      if (!signupResponse.ok) {
+        throw new Error(signupData.error || '회원가입에 실패했습니다.');
+      }
+
+      // 2. 사업정보 등록 API 호출
+      const businessResponse = await fetch('/api/business/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          businessSigunguCode: formData.sigunguCode,
+          businessZipCode: formData.zipCode,
+          businessAddress: formData.address,
+          businessAddressDetail: formData.addressDetail || null,
+          businessLatitude: formData.latitude,
+          businessLongitude: formData.longitude,
+          businessType: formData.businessType,
+          businessItem: formData.businessSubType,
+          businessAverageOrderAmount: parseFloat(formData.averagePrice),
+          businessSeatCount: parseInt(formData.capacity),
+          businessCustomerSegments: formData.targetCustomers
+        }),
+      });
+
+      const businessData = await businessResponse.json();
+
+      if (!businessResponse.ok) {
+        throw new Error(businessData.error || '사업정보 등록에 실패했습니다.');
+      }
+
       router.push('/dashboard');
-    }, 2000);
+    } catch (error) {
+      console.error('등록 오류:', error);
+      alert(error instanceof Error ? error.message : '등록에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderStep = () => {
@@ -90,6 +223,7 @@ export default function SignUpPage() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="example@email.com"
+              error={errors.email}
               required
             />
             
@@ -99,6 +233,7 @@ export default function SignUpPage() {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="8자 이상 입력하세요"
+              error={errors.password}
               required
             />
             
@@ -108,6 +243,7 @@ export default function SignUpPage() {
               value={formData.passwordConfirm}
               onChange={(e) => setFormData({ ...formData, passwordConfirm: e.target.value })}
               placeholder="비밀번호를 다시 입력하세요"
+              error={errors.passwordConfirm}
               required
             />
 
@@ -116,23 +252,29 @@ export default function SignUpPage() {
                 <input
                   type="checkbox"
                   className="mt-1"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
                   required
                 />
                 <span className="text-sm text-neutral-600">
                   [필수] 서비스 이용약관에 동의합니다
                 </span>
               </label>
+              {errors.terms && <p className="text-red-500 text-sm">{errors.terms}</p>}
               
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
                   className="mt-1"
+                  checked={privacyAccepted}
+                  onChange={(e) => setPrivacyAccepted(e.target.checked)}
                   required
                 />
                 <span className="text-sm text-neutral-600">
                   [필수] 개인정보 처리방침에 동의합니다
                 </span>
               </label>
+              {errors.privacy && <p className="text-red-500 text-sm">{errors.privacy}</p>}
               
               <label className="flex items-start gap-2">
                 <input
@@ -183,6 +325,7 @@ export default function SignUpPage() {
               value={formData.businessName}
               onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
               placeholder="로컬업 레스토랑"
+              error={errors.businessName}
               required
             />
             
@@ -201,6 +344,7 @@ export default function SignUpPage() {
                   </option>
                 ))}
               </select>
+              {errors.businessType && <p className="text-red-500 text-sm mt-1">{errors.businessType}</p>}
             </div>
 
             {formData.businessType && (
@@ -219,6 +363,7 @@ export default function SignUpPage() {
                     </option>
                   ))}
                 </select>
+                {errors.businessSubType && <p className="text-red-500 text-sm mt-1">{errors.businessSubType}</p>}
               </div>
             )}
             
@@ -227,14 +372,41 @@ export default function SignUpPage() {
               value={formData.registrationNumber}
               onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
               placeholder="000-00-00000"
+              error={errors.registrationNumber}
               required
             />
             
             <Input
+              label="우편번호"
+              value={formData.zipCode}
+              onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+              placeholder="12345"
+              error={errors.zipCode}
+              required
+            />
+
+            <Input
               label="업체 주소"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="주소를 입력하세요"
+              placeholder="기본 주소를 입력하세요"
+              error={errors.address}
+              required
+            />
+
+            <Input
+              label="상세 주소"
+              value={formData.addressDetail}
+              onChange={(e) => setFormData({ ...formData, addressDetail: e.target.value })}
+              placeholder="상세 주소를 입력하세요 (선택)"
+            />
+
+            <Input
+              label="시군구 코드"
+              value={formData.sigunguCode}
+              onChange={(e) => setFormData({ ...formData, sigunguCode: e.target.value })}
+              placeholder="시군구 코드를 입력하세요"
+              error={errors.sigunguCode}
               required
             />
           </div>
@@ -252,6 +424,7 @@ export default function SignUpPage() {
               onChange={(e) => setFormData({ ...formData, averagePrice: e.target.value })}
               placeholder="15000"
               helperText="원 단위로 입력하세요"
+              error={errors.averagePrice}
               required
             />
             
@@ -261,6 +434,7 @@ export default function SignUpPage() {
               value={formData.capacity}
               onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
               placeholder="50"
+              error={errors.capacity}
               required
             />
 
@@ -286,10 +460,11 @@ export default function SignUpPage() {
                         }
                       }}
                     />
-                    <span className="text-sm">{option}</span>
+                    <span className="text-sm">{CustomerSegmentLabels[option]}</span>
                   </label>
                 ))}
               </div>
+              {errors.targetCustomers && <p className="text-red-500 text-sm mt-1">{errors.targetCustomers}</p>}
             </div>
 
           </div>
@@ -298,28 +473,27 @@ export default function SignUpPage() {
       case 4:
         return (
           <div className="space-y-4 text-center">
-            <div className="w-20 h-20 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             </div>
             
-            <h2 className="text-2xl font-bold mb-2">이메일 인증</h2>
+            <h2 className="text-2xl font-bold mb-2">회원가입 완료!</h2>
             <p className="text-neutral-600 mb-6">
-              {formData.email}로 인증 메일을 발송했습니다.
+              <span className="font-semibold text-primary-600">{formData.email}</span>로 
               <br />
-              메일함을 확인해주세요.
+              인증 이메일이 자동으로 발송되었습니다.
+              <br />
+              <br />
+              이메일함을 확인하여 계정을 활성화해 주세요.
             </p>
             
-            <Input
-              label="인증 코드"
-              placeholder="6자리 인증 코드를 입력하세요"
-              className="max-w-xs mx-auto"
-            />
-            
-            <Button variant="ghost" type="button" className="text-sm">
-              인증 메일 재발송
-            </Button>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-blue-800 text-sm">
+                💡 스팸함도 함께 확인해 주세요!
+              </p>
+            </div>
           </div>
         );
 

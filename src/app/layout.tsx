@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { config } from "@/config";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import { Providers } from "@/components/providers/SessionProvider";
 
 export const metadata: Metadata = {
   title: "로컬업(LocalUp) - 관광 데이터로 만드는 우리 가게 성공 스토리",
@@ -37,8 +38,10 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="antialiased">
-        {children}
-        <ChatWidget />
+        <Providers>
+          {children}
+          <ChatWidget />
+        </Providers>
       </body>
     </html>
   );
