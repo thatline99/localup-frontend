@@ -9,11 +9,11 @@ import { ReviewsWidget } from "@/components/dashboard/ReviewsWidget";
 import { CompetitorsWidget } from "@/components/dashboard/CompetitorsWidget";
 import { AIRecommendations } from "@/components/dashboard/AIRecommendations";
 import { PageLayout } from "@/components/dashboard/PageLayout";
-import MainEventCard from "@/components/dashboard/MainEventCard";
 
 import { useApi } from "@/hooks/useApi";
 import { getDashboardTest } from "@/app/lib/api/dashboard/dashboard";
 import type { SigunguEventWithDates } from "@/types/dashboard/sigunguEventWithDates";
+import MainEventCard2 from "@/components/dashboard/MainEventCard2";
 
 const SIGUNGU_CODE = "11110";
 
@@ -34,9 +34,9 @@ export default function DashboardPage() {
       title="대시보드"
       description="오늘의 비즈니스 현황을 한눈에 확인하세요"
     >
-      <MainEventCard
+      <MainEventCard2
         data={findMainEventData}
-        loading={findMainEventLoading}
+        isLoading={findMainEventLoading}
         error={findMainEventError}
       />
 
