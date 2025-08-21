@@ -4,30 +4,32 @@ import { useMemo } from "react";
 import type { SigunguEventWithDates } from "@/types/dashboard/sigunguEventWithDates";
 
 type Props = {
-  event: SigunguEventWithDates | null;
+  data: SigunguEventWithDates | null;
   loading: boolean;
-  err: string | null;
+  error: string | null;
   className?: string;
 };
 
 export default function MainEventCard({
-  event,
+  data,
   loading,
-  err,
+  error,
   className,
 }: Props) {
-  const status: "upcoming" | "ongoing" | "ended" | null = useMemo(() => {
-    if (!event) return null;
-    const now = new Date();
-    const start = new Date(`${event.startDate}T00:00:00`);
-    const end = new Date(`${event.endDate}T23:59:59`);
-    if (now < start) return "upcoming";
-    if (now > end) return "ended";
-    return "ongoing";
-  }, [event]);
+  const eventStatus: "upcoming" | "ongoing" | "ended" | null = useMemo(() => {
+    if (!data) return null;
 
-  const statusLabel = useMemo(() => {
-    switch (status) {
+    const currentDate = new Date();
+    const startDateTime = new Date(`${data.startDate}T00:00:00`);
+    const endDateTime = new Date(`${data.endDate}T23:59:59`);
+
+    if (currentDate < startDateTime) return "upcoming";
+    if (currentDate > endDateTime) return "ended";
+    return "ongoing";
+  }, [data]);
+
+  const eventStatusLabel = useMemo(() => {
+    switch (eventStatus) {
       case "upcoming":
         return "개막 예정";
       case "ongoing":
@@ -37,13 +39,14 @@ export default function MainEventCard({
       default:
         return "";
     }
-  }, [status]);
+  }, [eventStatus]);
 
-  const dateText = useMemo(() => {
-    if (!event) return "";
-    const f = (s: string) => s.replaceAll("-", ".");
-    return `${f(event.startDate)} ~ ${f(event.endDate)}`;
-  }, [event]);
+  const eventDateText = useMemo(() => {
+    if (!data) return "";
+
+    const formatDateString = (isoDate: string) => isoDate.replaceAll("-", ".");
+    return `${formatDateString(data.startDate)} ~ ${formatDateString(data.endDate)}`;
+  }, [data]);
 
   return (
     <div
@@ -81,33 +84,31 @@ export default function MainEventCard({
             </>
           )}
 
-          {!loading && err && (
+          {!loading && error && (
             <>
               <h3 className="font-semibold text-primary-900">
                 알림을 가져오지 못했습니다
               </h3>
-              <p className="mt-1 text-sm text-primary-700">{err}</p>
+              <p className="mt-1 text-sm text-primary-700">{error}</p>
             </>
           )}
 
-          {!loading && !err && event && (
+          {!loading && !error && data && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-semibold text-primary-900">
-                  {event.title}
-                </h3>
-                {statusLabel && (
+                <h3 className="font-semibold text-primary-900">{data.title}</h3>
+                {eventStatusLabel && (
                   <span
                     className="rounded-md border px-2 py-0.5 text-xs"
-                    aria-label={`이벤트 상태: ${statusLabel}`}
+                    aria-label={`이벤트 상태: ${eventStatusLabel}`}
                   >
-                    {statusLabel}
+                    {eventStatusLabel}
                   </span>
                 )}
               </div>
               <p className="mt-1 text-sm text-primary-700">
-                {dateText}
-                {event.address ? `, ${event.address}` : ""}
+                {eventDateText}
+                {data.address ? `, ${data.address}` : ""}
               </p>
             </>
           )}

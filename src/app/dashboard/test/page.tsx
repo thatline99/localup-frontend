@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { WeatherWidget } from "@/components/dashboard/WeatherWidget";
 import { EventsWidget } from "@/components/dashboard/EventsWidget";
@@ -8,39 +9,36 @@ import { ReviewsWidget } from "@/components/dashboard/ReviewsWidget";
 import { CompetitorsWidget } from "@/components/dashboard/CompetitorsWidget";
 import { AIRecommendations } from "@/components/dashboard/AIRecommendations";
 import { PageLayout } from "@/components/dashboard/PageLayout";
-import { useEffect, useState } from "react";
-import { getDashboardTest } from "@/app/lib/api/dashboard/dashboard";
-import type { SigunguEventWithDates } from "@/types/dashboard/sigunguEventWithDates";
 import MainEventCard from "@/components/dashboard/MainEventCard";
 
+import { useApi } from "@/hooks/useApi";
+import { getDashboardTest } from "@/app/lib/api/dashboard/dashboard";
+import type { SigunguEventWithDates } from "@/types/dashboard/sigunguEventWithDates";
+
+const SIGUNGU_CODE = "11110";
+
 export default function DashboardPage() {
-  const [event, setEvent] = useState<SigunguEventWithDates | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+  const {
+    data: findMainEventData,
+    loading: findMainEventLoading,
+    error: findMainEventError,
+    execute: findMainEvent,
+  } = useApi<[string], SigunguEventWithDates | null>(getDashboardTest);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await getDashboardTest("11110");
-        if (res.code !== "SUCCESS" || !res.data) {
-          throw new Error(res.message || "Invalid response");
-        }
-        setEvent(res.data);
-      } catch (e: any) {
-        setErr(e?.message ?? "Failed to load");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    void findMainEvent(SIGUNGU_CODE);
+  }, [findMainEvent]);
 
   return (
     <PageLayout
       title="대시보드"
       description="오늘의 비즈니스 현황을 한눈에 확인하세요"
     >
-      {/* ✅ 메인 이벤트 카드 (분리 적용) */}
-      <MainEventCard event={event} loading={loading} err={err} />
+      <MainEventCard
+        data={findMainEventData}
+        loading={findMainEventLoading}
+        error={findMainEventError}
+      />
 
       {/* 주요 지표 */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

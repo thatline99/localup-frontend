@@ -7,7 +7,7 @@ const BASE_URL = "http://localhost:8080/api";
 // TODO-noah: 대시보드 테스트 코드입니다. 삭제 예정
 export async function getDashboardTest(
   legalDongSigunguCode: string,
-): Promise<BaseResponse<SigunguEventWithDates>> {
+): Promise<BaseResponse<SigunguEventWithDates | null>> {
   const response = await fetch(
     `${BASE_URL}/dashboard/test/events/main?legalDongSigunguCode=${encodeURIComponent(legalDongSigunguCode)}`,
     {
