@@ -1,18 +1,32 @@
 import { BaseResponse } from "@/types/common/baseResponse";
-import { SigunguEventWithDates } from "@/types/dashboard/sigunguEventWithDates";
+import { GetDashboardInformationResponse } from "@/types/dashboard/getDashboardInformationResponse";
 
-// TODO: 수정
-const BASE_URL = "http://localhost:8080/api";
+export async function getDashboard(): Promise<
+  BaseResponse<GetDashboardInformationResponse>
+> {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
 
-// TODO-noah: 대시보드 테스트 코드입니다. 삭제 예정
-export async function getDashboardTest(
-  legalDongSigunguCode: string,
-): Promise<BaseResponse<SigunguEventWithDates | null>> {
+  if (!response.ok) {
+    throw new Error();
+  }
+
+  return response.json();
+}
+
+// TODO-noah: 삭제, 아직 인증이 완료되지 않아 사용하는 코드입니다.
+export async function getDashboardTest(): Promise<
+  BaseResponse<GetDashboardInformationResponse>
+> {
   const response = await fetch(
-    `${BASE_URL}/dashboard/test/events/main?legalDongSigunguCode=${encodeURIComponent(legalDongSigunguCode)}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/test`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
     },
   );
 
@@ -20,5 +34,5 @@ export async function getDashboardTest(
     throw new Error();
   }
 
-  return await response.json();
+  return response.json();
 }

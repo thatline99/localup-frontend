@@ -1,3 +1,5 @@
+// NOTE: 사용 보류
+
 "use client";
 
 import { useCallback, useState } from "react";
