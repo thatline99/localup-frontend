@@ -240,7 +240,7 @@ export default function DashboardPage() {
       tooltip.classList.add('opacity-100');
     }
   }
-
+ 
   function hideTooltip() {
     const tooltip = document.getElementById('tooltip');
     if (tooltip) {
@@ -490,7 +490,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 truncate">{attraction.name}</div>
-                          <div className="text-sm text-gray-600">{attraction.category} > {attraction.subCategory}</div>
+                          <div className="text-sm text-gray-600">{attraction.category}{attraction.subCategory ? ` > ${attraction.subCategory}` : ''}</div>
                         </div>
                       </div>
                     );
