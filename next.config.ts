@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/cms/resource/**",
       },
+      {
+        protocol: "https",
+        hostname: "tong.visitkorea.or.kr",
+        port: "",
+        pathname: "/cms/resource/**",
+      },
     ],
   },
 };
