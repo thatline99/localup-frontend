@@ -1,14 +1,20 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { getDashboardTest } from "@/app/lib/api/dashboard/dashboard";
+import {
+  getDashboardTest,
+  getShortTermForecast,
+} from "@/app/lib/api/dashboard/dashboard";
 import {
   GetDashboardInformationResponse,
-  DailyWeather,
   LocationEvent,
   TouristAttractionRanking,
   VisitorStatistics,
 } from "@/types/dashboard/getDashboardInformationResponse";
+import {
+  GetShortTermForecastResponse,
+  ShortTermForecast,
+} from "@/types/dashboard/getShortTermForecastResponse";
 import { PageLayout } from "@/components/dashboard/PageLayout";
 import Script from "next/script";
 
@@ -22,7 +28,10 @@ declare global {
 export default function DashboardPage() {
   const [dashboardData, setDashboardData] =
     useState<GetDashboardInformationResponse | null>(null);
+  const [weatherData, setWeatherData] =
+    useState<GetShortTermForecastResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [weatherRefreshing, setWeatherRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAttraction, setSelectedAttraction] = useState<number | null>(
     null,
@@ -44,11 +53,21 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await getDashboardTest();
-        if (response.code === "SUCCESS" && response.data) {
-          setDashboardData(response.data);
+        const [dashboardResponse, weatherResponse] = await Promise.all([
+          getDashboardTest(),
+          getShortTermForecast(),
+        ]);
+
+        if (dashboardResponse.code === "SUCCESS" && dashboardResponse.data) {
+          setDashboardData(dashboardResponse.data);
         } else {
-          setError("데이터를 불러오는데 실패했습니다.");
+          setError("대시보드 데이터를 불러오는데 실패했습니다.");
+        }
+
+        if (weatherResponse.code === "SUCCESS" && weatherResponse.data) {
+          setWeatherData(weatherResponse);
+        } else {
+          setError("날씨 데이터를 불러오는데 실패했습니다.");
         }
       } catch {
         setError("API 호출 중 오류가 발생했습니다.");
@@ -331,6 +350,21 @@ export default function DashboardPage() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getDominantWeatherCondition = (hourlyForecasts: any[]) => {
+    const conditionCounts: { [key: string]: number } = {};
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    hourlyForecasts.forEach((forecast: any) => {
+      const condition = forecast.skyCondition;
+      conditionCounts[condition] = (conditionCounts[condition] || 0) + 1;
+    });
+
+    return Object.keys(conditionCounts).reduce((a, b) =>
+      conditionCounts[a] > conditionCounts[b] ? a : b,
+    );
+  };
+
   if (loading) {
     return (
       <PageLayout title="대시보드" description="데이터를 불러오는 중...">
@@ -357,7 +391,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!dashboardData) {
+  if (!dashboardData || !weatherData) {
     return (
       <PageLayout title="대시보드" description="데이터가 없습니다">
         <div className="flex items-center justify-center py-12">
@@ -423,37 +457,81 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* 첫 번째 행 - 날씨 카드 */}
         <div className="rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            날씨 정보
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {dashboardData.weatherInformation.dailyWeatherList.map(
-              (weather: DailyWeather, index: number) => (
-                <div
-                  key={index}
-                  className="rounded-lg bg-gray-50 p-4 text-center"
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">날씨 정보</h2>
+            <button
+              onClick={async () => {
+                setWeatherRefreshing(true);
+                try {
+                  const weatherResponse = await getShortTermForecast();
+                  if (
+                    weatherResponse.code === "SUCCESS" &&
+                    weatherResponse.data
+                  ) {
+                    setWeatherData(weatherResponse);
+                  }
+                } catch {
+                  setError("날씨 데이터 새로고침에 실패했습니다.");
+                } finally {
+                  setWeatherRefreshing(false);
+                }
+              }}
+              disabled={weatherRefreshing}
+              className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+              title="날씨 정보 새로고침"
+            >
+              {weatherRefreshing ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
+              ) : (
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <div className="mb-2 text-3xl">
-                    {getWeatherIcon(weather.condition)}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {weatherData.data.shortTermForecasts
+              .slice(0, 3)
+              .map((forecast: ShortTermForecast, index: number) => {
+                const dominantCondition = getDominantWeatherCondition(
+                  forecast.hourlyShortTermForecasts,
+                );
+                return (
+                  <div
+                    key={index}
+                    className="rounded-lg bg-gray-50 p-4 text-center"
+                  >
+                    <div className="mb-2 text-3xl">
+                      {getWeatherIcon(dominantCondition)}
+                    </div>
+                    <div className="mb-1 text-sm text-gray-600">
+                      {new Date(forecast.date).toLocaleDateString("ko-KR", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </div>
+                    <div className="text-lg font-semibold">
+                      <span className="text-red-500">
+                        {forecast.dailyMaximumTemperature ?? "-"}°
+                      </span>{" "}
+                      /{" "}
+                      <span className="text-blue-500">
+                        {forecast.dailyMinimumTemperature ?? "-"}°
+                      </span>
+                    </div>
                   </div>
-                  <div className="mb-1 text-sm text-gray-600">
-                    {new Date(weather.date).toLocaleDateString("ko-KR", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </div>
-                  <div className="text-lg font-semibold">
-                    <span className="text-red-500">
-                      {weather.maximumTemperature}°
-                    </span>{" "}
-                    /{" "}
-                    <span className="text-blue-500">
-                      {weather.minimumTemperature}°
-                    </span>
-                  </div>
-                </div>
-              ),
-            )}
+                );
+              })}
           </div>
         </div>
 
