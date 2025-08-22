@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
+  const [weatherCardExpanded, setWeatherCardExpanded] = useState(true);
 
   // 평균값 애니메이션을 위한 state
   const [animatedTemp, setAnimatedTemp] = useState(0);
@@ -726,42 +727,90 @@ export default function DashboardPage() {
               "",
             );
 
+            // 평균값 계산
+            const avgPrecipitation =
+              forecast.hourlyShortTermForecasts.reduce(
+                (sum, h) => sum + (h.precipitationProbability || 0),
+                0,
+              ) / forecast.hourlyShortTermForecasts.length;
+            const avgHumidity =
+              forecast.hourlyShortTermForecasts.reduce(
+                (sum, h) => sum + (h.humidity || 0),
+                0,
+              ) / forecast.hourlyShortTermForecasts.length;
+            const avgWindSpeed =
+              forecast.hourlyShortTermForecasts.reduce(
+                (sum, h) => sum + (h.windSpeed || 0),
+                0,
+              ) / forecast.hourlyShortTermForecasts.length;
+
             const dayNames = ["오늘", "내일", "모레"];
             return (
-              <div
-                key={index}
-                className="rounded-lg bg-gray-50 p-4 text-center"
-              >
-                <div className="mb-2 text-3xl">
-                  {getWeatherIcon(dominantCondition)}
-                </div>
-                <div className="mb-1 text-sm text-gray-600">
-                  {dayNames[index]} (
-                  {new Date(forecast.date).toLocaleDateString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                  )
-                </div>
-                <div className="text-lg font-semibold">
-                  <span className="text-red-500">
-                    {forecast.dailyMaximumTemperature ?? "-"}°
-                  </span>{" "}
-                  /{" "}
-                  <span className="text-blue-500">
-                    {forecast.dailyMinimumTemperature ?? "-"}°
-                  </span>
-                </div>
-                <div className="mt-1 space-y-0.5">
-                  <div className="text-xs text-blue-600">
-                    {getPrecipitationText(dominantPrecipitation)}
-                  </div>
-                  {hasSnowfall && (
-                    <div className="flex items-center gap-1 text-xs text-blue-800">
-                      <span>❄️</span>
-                      <span>적설 {maxSnowfall}</span>
+              <div key={index} className="rounded-lg bg-gray-50 p-3">
+                {/* 상단 섹션 - 한 줄로 정리 */}
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">
+                      {getWeatherIcon(dominantCondition)}
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-gray-800">
+                        {dayNames[index]}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {new Date(forecast.date)
+                          .toLocaleDateString("ko-KR", {
+                            month: "2-digit",
+                            day: "2-digit",
+                          })
+                          .replace(/\. /g, "월 ")
+                          .replace(".", "일")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="font-bold">
+                      <span className="text-lg text-red-500">
+                        {forecast.dailyMaximumTemperature ?? "-"}°
+                      </span>
+                      <span className="mx-1 text-gray-400">/</span>
+                      <span className="text-lg text-blue-500">
+                        {forecast.dailyMinimumTemperature ?? "-"}°
+                      </span>
+                    </div>
+                    {(dominantPrecipitation !== "NONE" || hasSnowfall) && (
+                      <div className="text-sm font-medium text-blue-600">
+                        {getPrecipitationText(dominantPrecipitation)}
+                        {hasSnowfall && <span className="ml-1">❄️</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 평균 데이터 섹션 - 더 컴팩트하게 */}
+                <div className="grid grid-cols-3 gap-2 border-t border-gray-200 pt-2">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500">평균 강수 확률</div>
+                    <div className="text-sm font-semibold text-blue-600">
+                      {avgPrecipitation.toFixed(0)} %
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500">평균 습도</div>
+                    <div className="text-sm font-semibold text-green-600">
+                      {avgHumidity.toFixed(0)} %
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500">평균 풍속</div>
+                    <div
+                      className="text-sm font-semibold"
+                      style={{ color: getWindSpeedColor(avgWindSpeed) }}
+                    >
+                      {avgWindSpeed.toFixed(1)}{" "}
+                      <span className="text-xs">m/s</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -1114,29 +1163,20 @@ export default function DashboardPage() {
           </linearGradient>
         </defs>
 
-        {/* 클리핑 마스크 */}
-        <defs>
-          <clipPath id={`tempClip-${animationKey}`}>
-            <rect x="0" y="180" width="800" height="180">
-              <animate
-                attributeName="y"
-                from="180"
-                to="0"
-                dur="0.3s"
-                fill="freeze"
-                begin="0s"
-                restart="always"
-              />
-            </rect>
-          </clipPath>
-        </defs>
-
         {/* 영역 채우기 */}
         <path
           d={`${createPath()} L ${points[points.length - 1].x},150 L ${points[0].x},150 Z`}
           fill="url(#tempGradient)"
-          clipPath={`url(#tempClip-${animationKey})`}
-        />
+          opacity="0"
+        >
+          <animate
+            attributeName="opacity"
+            from="0"
+            to="1"
+            dur="0.3s"
+            fill="freeze"
+          />
+        </path>
 
         {/* 온도 라인 */}
         <path
@@ -1146,12 +1186,28 @@ export default function DashboardPage() {
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
-          clipPath={`url(#tempClip-${animationKey})`}
-        />
+          opacity="0"
+        >
+          <animate
+            attributeName="opacity"
+            from="0"
+            to="1"
+            dur="0.3s"
+            fill="freeze"
+          />
+        </path>
 
         {/* 온도 점과 라벨 */}
         {points.map((point, index) => (
-          <g key={index} clipPath={`url(#tempClip-${animationKey})`}>
+          <g key={index} opacity="0">
+            <animate
+              attributeName="opacity"
+              from="0"
+              to="1"
+              dur="0.3s"
+              begin={`${index * 0.02}s`}
+              fill="freeze"
+            />
             <circle
               cx={point.x}
               cy={point.y}
@@ -1277,49 +1333,48 @@ export default function DashboardPage() {
         {/* 첫 번째 행 - 날씨 카드 */}
         <div className="rounded-lg bg-white shadow lg:col-span-2">
           <div className="p-6">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">날씨 정보</h2>
-              <div className="flex items-center gap-3">
-                {weatherData?.data?.updatedDate && (
+              <div className="flex items-center gap-2">
+                {weatherData?.data?.updatedDate && weatherCardExpanded && (
                   <span className="text-sm text-gray-500">
                     업데이트:{" "}
-                    {new Date(weatherData.data.updatedDate).toLocaleString(
-                      "ko-KR",
-                      {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      },
-                    )}
+                    {(() => {
+                      const date = new Date(weatherData.data.updatedDate);
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(
+                        2,
+                        "0",
+                      );
+                      const day = String(date.getDate()).padStart(2, "0");
+                      const hour = String(date.getHours()).padStart(2, "0");
+                      const minute = String(date.getMinutes()).padStart(2, "0");
+                      return `${year}년 ${month}월 ${day}일 ${hour}:${minute}`;
+                    })()}
                   </span>
                 )}
-                <button
-                  onClick={async () => {
-                    setWeatherRefreshing(true);
-                    try {
-                      const weatherResponse = await getShortTermForecast();
-                      if (
-                        weatherResponse.code === "SUCCESS" &&
-                        weatherResponse.data
-                      ) {
-                        setWeatherData(weatherResponse);
+                {weatherCardExpanded && (
+                  <button
+                    onClick={async () => {
+                      setWeatherRefreshing(true);
+                      try {
+                        const weatherResponse = await getShortTermForecast();
+                        if (
+                          weatherResponse.code === "SUCCESS" &&
+                          weatherResponse.data
+                        ) {
+                          setWeatherData(weatherResponse);
+                        }
+                      } catch {
+                        setError("날씨 데이터 새로고침에 실패했습니다.");
+                      } finally {
+                        setWeatherRefreshing(false);
                       }
-                    } catch {
-                      setError("날씨 데이터 새로고침에 실패했습니다.");
-                    } finally {
-                      setWeatherRefreshing(false);
-                    }
-                  }}
-                  disabled={weatherRefreshing}
-                  className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="날씨 정보 새로고침"
-                >
-                  {weatherRefreshing ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
-                  ) : (
+                    }}
+                    disabled={weatherRefreshing}
+                    className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="날씨 정보 새로고침"
+                  >
                     <svg
                       className="h-5 w-5"
                       fill="none"
@@ -1333,36 +1388,160 @@ export default function DashboardPage() {
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                       />
                     </svg>
-                  )}
+                  </button>
+                )}
+                <button
+                  onClick={() => setWeatherCardExpanded(!weatherCardExpanded)}
+                  className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  title={weatherCardExpanded ? "접기" : "펼치기"}
+                >
+                  <svg
+                    className={`h-5 w-5 transition-transform duration-200 ${weatherCardExpanded ? "" : "rotate-180"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 15l7-7 7 7"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
 
-            {/* 날씨 탭 */}
-            <div className="mb-6 flex space-x-1 rounded-lg bg-gray-100 p-1">
-              {[
-                { key: "all", label: "전체" },
-                { key: "today", label: "오늘" },
-                { key: "tomorrow", label: "내일" },
-                { key: "dayAfter", label: "모레" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setSelectedWeatherTab(tab.key as any)}
-                  className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    selectedWeatherTab === tab.key
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            {/* 날씨 탭 - 카드가 펼쳐졌을 때만 표시 */}
+            {weatherCardExpanded && (
+              <>
+                <div className="mb-6 mt-4 flex space-x-1 rounded-lg bg-gray-100 p-1">
+                  {[
+                    { key: "all", label: "전체" },
+                    { key: "today", label: "오늘" },
+                    { key: "tomorrow", label: "내일" },
+                    { key: "dayAfter", label: "모레" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setSelectedWeatherTab(tab.key as any)}
+                      className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        selectedWeatherTab === tab.key
+                          ? "bg-white text-blue-600 shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-            {/* 날씨 내용 */}
-            {renderWeatherContent()}
+                {/* 날씨 내용 */}
+                {weatherRefreshing ? (
+                  <div className="animate-pulse">
+                    {selectedWeatherTab === "all" ? (
+                      // 전체 탭 스켈레톤
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="rounded-lg bg-gray-200 p-4">
+                            <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-gray-300"></div>
+                            <div className="mx-auto mb-1 h-4 w-20 rounded bg-gray-300"></div>
+                            <div className="mx-auto h-6 w-24 rounded bg-gray-300"></div>
+                            <div className="mx-auto mt-2 h-3 w-16 rounded bg-gray-300"></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      // 상세 탭 스켈레톤
+                      <div className="space-y-4">
+                        {/* 온도 차트 스켈레톤 */}
+                        <div className="grid grid-cols-10 gap-3">
+                          <div className="col-span-8 rounded-lg bg-gray-200 p-3">
+                            <div className="mb-2 h-5 w-24 rounded bg-gray-300"></div>
+                            <div className="h-48 rounded bg-gray-300"></div>
+                          </div>
+                          <div className="col-span-2 flex flex-col gap-2">
+                            {[1, 2, 3, 4].map((i) => (
+                              <div
+                                key={i}
+                                className="flex-1 rounded-lg bg-gray-200 p-3"
+                              >
+                                <div className="mb-2 h-4 w-20 rounded bg-gray-300"></div>
+                                <div className="ml-auto h-6 w-16 rounded bg-gray-300"></div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* 하단 정보 스켈레톤 */}
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-10">
+                          <div className="rounded-lg bg-gray-200 p-3 lg:col-span-4">
+                            <div className="mb-2 h-5 w-12 rounded bg-gray-300"></div>
+                            <div className="space-y-2">
+                              {[1, 2, 3].map((i) => (
+                                <div
+                                  key={i}
+                                  className="h-6 rounded bg-gray-300"
+                                ></div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="rounded-lg bg-gray-200 p-3 lg:col-span-2">
+                            <div className="mb-2 h-5 w-12 rounded bg-gray-300"></div>
+                            <div className="space-y-2">
+                              {[1, 2, 3].map((i) => (
+                                <div
+                                  key={i}
+                                  className="h-6 rounded bg-gray-300"
+                                ></div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="rounded-lg bg-gray-200 p-3 lg:col-span-4">
+                            <div className="mb-2 h-5 w-12 rounded bg-gray-300"></div>
+                            <div className="space-y-2">
+                              {[1, 2, 3].map((i) => (
+                                <div
+                                  key={i}
+                                  className="h-6 rounded bg-gray-300"
+                                ></div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  renderWeatherContent()
+                )}
+              </>
+            )}
           </div>
+
+          {/* Footer - API 제공 정보 */}
+          {weatherCardExpanded && (
+            <div className="px-6 py-3">
+              <div className="flex items-center justify-end text-xs text-gray-500">
+                <svg
+                  className="mr-1 h-3 w-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>
+                  데이터 제공: 기상청 | 기상청_단기예보 ((구)_동네예보)
+                  조회서비스
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 첫 번째 행 - 방문객 통계 */}
