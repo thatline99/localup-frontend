@@ -33,7 +33,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedWeatherTab, setSelectedWeatherTab] = useState<"all" | "today" | "tomorrow" | "dayAfter">("all");
+  const [selectedWeatherTab, setSelectedWeatherTab] = useState<
+    "all" | "today" | "tomorrow" | "dayAfter"
+  >("all");
   const [selectedAttraction, setSelectedAttraction] = useState<number | null>(
     null,
   );
@@ -331,24 +333,217 @@ export default function DashboardPage() {
   const getWeatherIcon = (condition: string) => {
     switch (condition) {
       case "SUNNY":
-        return "☀️";
-      case "CLOUDY":
-        return "☁️";
+        return "☀️"; // 맑음
       case "PARTLY_CLOUDY":
-        return "⛅";
-      case "RAINY":
-        return "🌧️";
-      case "SHOWER":
-        return "🌦️";
-      case "THUNDERSTORM":
-        return "⛈️";
-      case "SNOW":
-        return "❄️";
-      case "FOG":
-        return "🌫️";
+        return "⛅"; // 구름 많음
+      case "CLOUDY":
+        return "☁️"; // 흐림
       default:
         return "🌤️";
     }
+  };
+
+  const getPrecipitationIcon = (precipitationType: string | null) => {
+    switch (precipitationType) {
+      case "RAIN":
+        return "🌧️";
+      case "RAIN_AND_SNOW":
+        return "🌨️";
+      case "SHOWER":
+        return "🌦️";
+      case "NONE":
+        return ""; // 아무것도 표시하지 않음
+      case null:
+      default:
+        return ""; // 아무것도 표시하지 않음
+    }
+  };
+
+  const getPrecipitationText = (precipitationType: string | null) => {
+    switch (precipitationType) {
+      case "RAIN":
+        return "비";
+      case "RAIN_AND_SNOW":
+        return "비/눈";
+      case "SHOWER":
+        return "소나기";
+      case "NONE":
+        return "-";
+      case null:
+      default:
+        return "-";
+    }
+  };
+
+  const getSkyConditionText = (skyCondition: string | null) => {
+    switch (skyCondition) {
+      case "SUNNY":
+        return "맑음";
+      case "PARTLY_CLOUDY":
+        return "구름 많음";
+      case "CLOUDY":
+        return "흐림";
+      default:
+        return "맑음";
+    }
+  };
+
+  const getPrecipitationAmountText = (precipitationAmount: string | null) => {
+    if (
+      !precipitationAmount ||
+      precipitationAmount === "NONE" ||
+      precipitationAmount === "강수없음"
+    ) {
+      return "없음";
+    }
+
+    // 실제 강수량 값인 경우 (예: "2.5mm")
+    if (
+      typeof precipitationAmount === "string" &&
+      precipitationAmount.includes("mm")
+    ) {
+      return precipitationAmount;
+    }
+
+    // 코드 값인 경우
+    switch (precipitationAmount) {
+      case "1":
+        return "약함 (<3mm)";
+      case "2":
+        return "보통 (3~15mm)";
+      case "3":
+        return "강함 (>15mm)";
+      default:
+        return precipitationAmount || "없음";
+    }
+  };
+
+  const getSnowfallAmountText = (snowfallAmount: string | null) => {
+    if (
+      !snowfallAmount ||
+      snowfallAmount === "NONE" ||
+      snowfallAmount === "적설없음"
+    ) {
+      return "없음";
+    }
+
+    // 실제 적설량 값인 경우 (예: "2.5cm")
+    if (typeof snowfallAmount === "string" && snowfallAmount.includes("cm")) {
+      return snowfallAmount;
+    }
+
+    // 코드 값인 경우
+    switch (snowfallAmount) {
+      case "0":
+      case "NONE":
+        return "없음";
+      case "1":
+        return "보통 (<1cm)";
+      case "2":
+        return "많음 (≥1cm)";
+      default:
+        return snowfallAmount || "없음";
+    }
+  };
+
+  const getSnowfallIcon = (snowfallAmount: string | null) => {
+    if (
+      !snowfallAmount ||
+      snowfallAmount === "NONE" ||
+      snowfallAmount === "적설없음" ||
+      snowfallAmount === "0"
+    ) {
+      return "";
+    }
+
+    switch (snowfallAmount) {
+      case "1":
+        return "❄️";
+      case "2":
+        return "🌨️";
+      default:
+        if (
+          typeof snowfallAmount === "string" &&
+          snowfallAmount.includes("cm")
+        ) {
+          return "🌨️";
+        }
+        return "";
+    }
+  };
+
+  // 바람 방향 계산 (바람이 부는 방향)
+  const getWindDirection = (
+    windDirection: number | null,
+    windU: number | null,
+    windV: number | null,
+  ) => {
+    // windDirection이 있으면 우선 사용
+    if (windDirection !== null && windDirection !== undefined) {
+      return windDirection;
+    }
+
+    // windU, windV 컴포넌트로 방향 계산
+    if (windU !== null && windV !== null) {
+      let direction = Math.atan2(windV, windU) * (180 / Math.PI);
+      direction = (direction + 360) % 360; // 0-360도로 정규화
+      return direction;
+    }
+
+    return null;
+  };
+
+  // 바람 방향 화살표 SVG 생성
+  const getWindArrow = (direction: number | null) => {
+    if (direction === null) return null;
+
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" className="inline-block">
+        <g transform={`rotate(${direction} 12 12)`}>
+          <path
+            d="M12 2 L16 10 L12 8 L8 10 Z"
+            fill="#4B5563"
+            stroke="#374151"
+            strokeWidth="0.5"
+          />
+        </g>
+      </svg>
+    );
+  };
+
+  // 바람 방향 텍스트
+  const getWindDirectionText = (direction: number | null) => {
+    if (direction === null) return "";
+
+    const directions = [
+      "북풍",
+      "북북동풍",
+      "북동풍",
+      "동북동풍",
+      "동풍",
+      "동남동풍",
+      "남동풍",
+      "남남동풍",
+      "남풍",
+      "남남서풍",
+      "남서풍",
+      "서남서풍",
+      "서풍",
+      "서북서풍",
+      "북서풍",
+      "북북서풍",
+    ];
+
+    const index = Math.round(direction / 22.5) % 16;
+    return directions[index];
+  };
+
+  // 바람 속도 색상
+  const getWindSpeedColor = (speed: number | null) => {
+    if (!speed) return "#6B7280";
+    if (speed >= 9) return "#DC2626"; // 강함 - 빨간색
+    if (speed >= 4) return "#F59E0B"; // 보통 - 주황색
+    return "#10B981"; // 약함 - 초록색
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -368,23 +563,29 @@ export default function DashboardPage() {
 
   const getFilteredWeatherData = () => {
     if (!weatherData?.data?.shortTermForecasts) return [];
-    
+
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split("T")[0];
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowStr = tomorrow.toISOString().split("T")[0];
     const dayAfter = new Date(today);
     dayAfter.setDate(today.getDate() + 2);
-    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+    const dayAfterStr = dayAfter.toISOString().split("T")[0];
 
     switch (selectedWeatherTab) {
       case "today":
-        return weatherData.data.shortTermForecasts.filter(f => f.date === todayStr);
+        return weatherData.data.shortTermForecasts.filter(
+          (f) => f.date === todayStr,
+        );
       case "tomorrow":
-        return weatherData.data.shortTermForecasts.filter(f => f.date === tomorrowStr);
+        return weatherData.data.shortTermForecasts.filter(
+          (f) => f.date === tomorrowStr,
+        );
       case "dayAfter":
-        return weatherData.data.shortTermForecasts.filter(f => f.date === dayAfterStr);
+        return weatherData.data.shortTermForecasts.filter(
+          (f) => f.date === dayAfterStr,
+        );
       default:
         return weatherData.data.shortTermForecasts;
     }
@@ -392,7 +593,7 @@ export default function DashboardPage() {
 
   const renderWeatherContent = () => {
     const filteredData = getFilteredWeatherData();
-    
+
     if (selectedWeatherTab === "all") {
       return renderWeatherOverview();
     } else {
@@ -402,7 +603,7 @@ export default function DashboardPage() {
 
   const renderWeatherOverview = () => {
     if (!weatherData?.data?.shortTermForecasts) return null;
-    
+
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {weatherData.data.shortTermForecasts
@@ -411,6 +612,43 @@ export default function DashboardPage() {
             const dominantCondition = getDominantWeatherCondition(
               forecast.hourlyShortTermForecasts,
             );
+
+            // 해당 날짜의 강수 정보 가져오기
+            const precipitationInfo = forecast.hourlyShortTermForecasts.reduce(
+              (acc, hourly) => {
+                const type = hourly.precipitationType || "NONE";
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+              },
+              {} as Record<string, number>,
+            );
+
+            // 가장 빈번한 강수 타입 찾기
+            const dominantPrecipitation = Object.keys(precipitationInfo).reduce(
+              (a, b) => (precipitationInfo[a] > precipitationInfo[b] ? a : b),
+            );
+
+            // 적설량 정보 확인
+            const hasSnowfall = forecast.hourlyShortTermForecasts.some(
+              (hourly) =>
+                hourly.snowfallAmount &&
+                hourly.snowfallAmount !== "NONE" &&
+                hourly.snowfallAmount !== "적설없음",
+            );
+
+            // 최대 적설량 찾기
+            const maxSnowfall = forecast.hourlyShortTermForecasts.reduce(
+              (max, hourly) => {
+                if (!hourly.snowfallAmount || hourly.snowfallAmount === "NONE")
+                  return max;
+                if (hourly.snowfallAmount === "2") return "많음";
+                if (hourly.snowfallAmount === "1" && max !== "많음")
+                  return "보통";
+                return max;
+              },
+              "",
+            );
+
             const dayNames = ["오늘", "내일", "모레"];
             return (
               <div
@@ -421,10 +659,12 @@ export default function DashboardPage() {
                   {getWeatherIcon(dominantCondition)}
                 </div>
                 <div className="mb-1 text-sm text-gray-600">
-                  {dayNames[index]} ({new Date(forecast.date).toLocaleDateString("ko-KR", {
+                  {dayNames[index]} (
+                  {new Date(forecast.date).toLocaleDateString("ko-KR", {
                     month: "short",
                     day: "numeric",
-                  })})
+                  })}
+                  )
                 </div>
                 <div className="text-lg font-semibold">
                   <span className="text-red-500">
@@ -435,6 +675,17 @@ export default function DashboardPage() {
                     {forecast.dailyMinimumTemperature ?? "-"}°
                   </span>
                 </div>
+                <div className="mt-1 space-y-0.5">
+                  <div className="text-xs text-blue-600">
+                    {getPrecipitationText(dominantPrecipitation)}
+                  </div>
+                  {hasSnowfall && (
+                    <div className="flex items-center gap-1 text-xs text-blue-800">
+                      <span>❄️</span>
+                      <span>적설 {maxSnowfall}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -443,45 +694,114 @@ export default function DashboardPage() {
   };
 
   const renderDetailedWeather = (forecast: ShortTermForecast | undefined) => {
-    if (!forecast) return <div className="text-center text-gray-500">데이터가 없습니다.</div>;
-    
+    if (!forecast)
+      return (
+        <div className="text-center text-gray-500">데이터가 없습니다.</div>
+      );
+
     return (
       <div className="space-y-4">
-        {/* 온도 차트 */}
-        <div>
-          <h3 className="mb-2 text-base font-medium text-gray-900">시간별 온도</h3>
-          <div className="rounded-lg bg-gray-50 p-3">
-            <svg className="h-32 w-full" viewBox="0 0 800 130">
-              {renderTemperatureChart(forecast.hourlyShortTermForecasts)}
-            </svg>
-          </div>
+        {/* 상단: 온도 차트 (전체 너비) */}
+        <div className="rounded-lg bg-gray-50 p-3">
+          <h3 className="mb-2 text-base font-medium text-gray-900">
+            시간별 온도
+          </h3>
+          <svg className="h-40 w-full" viewBox="0 0 800 160">
+            {renderTemperatureChart(forecast.hourlyShortTermForecasts)}
+          </svg>
         </div>
 
-        {/* 상세 정보 그리드 */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* 습도 */}
-          <div className="rounded-lg bg-gray-50 p-3">
+        {/* 하단: 강수, 습도, 바람 정보 */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-10">
+          {/* 상태 (4칸) */}
+          <div className="rounded-lg bg-gray-50 p-3 lg:col-span-4">
+            <h4 className="mb-2 text-sm font-medium text-gray-900">상태</h4>
+            <div className="space-y-1">
+              {forecast.hourlyShortTermForecasts
+                .filter((_, index) => index % 3 === 0) // 3시간 단위로 표시
+                .map((hourly, index) => (
+                  <div key={index} className="flex items-center p-1 text-xs">
+                    <span className="w-10 text-center font-medium text-gray-600">
+                      {hourly.time.slice(0, 2)}시
+                    </span>
+
+                    <div className="ml-2 flex w-20 items-center gap-1">
+                      <span className="text-xs">
+                        {getWeatherIcon(hourly.skyCondition)}
+                      </span>
+                      <span className="whitespace-nowrap text-xs text-gray-500">
+                        {getSkyConditionText(hourly.skyCondition)}
+                      </span>
+                    </div>
+
+                    <div className="ml-2 flex w-16 items-center gap-1">
+                      {getPrecipitationIcon(hourly.precipitationType) ? (
+                        <span className="text-xs">
+                          {getPrecipitationIcon(hourly.precipitationType)}
+                        </span>
+                      ) : (
+                        <span className="text-xs">-</span>
+                      )}
+                      <span className="whitespace-nowrap text-xs font-medium text-blue-600">
+                        {getPrecipitationIcon(hourly.precipitationType)
+                          ? getPrecipitationText(hourly.precipitationType)
+                          : "-"}
+                      </span>
+                    </div>
+
+                    <div className="ml-2 h-1.5 flex-1 rounded-full bg-gray-200">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${hourly.precipitationProbability || 0}%`,
+                          backgroundColor:
+                            (hourly.precipitationProbability || 0) > 70
+                              ? "#EF4444"
+                              : (hourly.precipitationProbability || 0) > 40
+                                ? "#F59E0B"
+                                : "#3B82F6",
+                        }}
+                      ></div>
+                    </div>
+
+                    <div className="ml-1 flex w-10 items-center justify-end">
+                      <span className="text-right text-xs font-medium text-gray-800">
+                        {hourly.precipitationProbability || 0}
+                      </span>
+                      <span className="ml-0.5 text-xs font-medium text-gray-800">
+                        %
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* 습도 (2칸) */}
+          <div className="rounded-lg bg-gray-50 p-3 lg:col-span-2">
             <h4 className="mb-2 text-sm font-medium text-gray-900">습도</h4>
             <div className="space-y-1">
               {forecast.hourlyShortTermForecasts
                 .filter((_, index) => index % 3 === 0)
                 .map((hourly, index) => (
-                  <div key={index} className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">
-                      {new Date(`${forecast.date}T${hourly.time}`).toLocaleTimeString("ko-KR", {
-                        hour: "2-digit",
-                        hour12: true
-                      }).replace(/시$/, '')}시
+                  <div key={index} className="flex items-center p-1 text-xs">
+                    <span className="w-10 text-center font-medium text-gray-600">
+                      {hourly.time.slice(0, 2)}시
                     </span>
-                    <div className="flex items-center gap-1">
-                      <div className="h-1.5 w-8 rounded-full bg-gray-200">
-                        <div 
-                          className="h-1.5 rounded-full bg-green-500"
-                          style={{ width: `${hourly.humidity || 0}%` }}
-                        ></div>
-                      </div>
-                      <span className="font-medium w-8 text-right">
-                        {hourly.humidity || 0}%
+
+                    <div className="ml-2 h-1.5 flex-1 rounded-full bg-gray-200">
+                      <div
+                        className="h-1.5 rounded-full bg-green-500 transition-all duration-300"
+                        style={{ width: `${hourly.humidity || 0}%` }}
+                      ></div>
+                    </div>
+
+                    <div className="ml-1 flex w-10 items-center justify-end">
+                      <span className="text-right text-xs font-medium text-gray-800">
+                        {hourly.humidity || 0}
+                      </span>
+                      <span className="ml-0.5 text-xs font-medium text-gray-800">
+                        %
                       </span>
                     </div>
                   </div>
@@ -489,64 +809,69 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 강수확률 */}
-          <div className="rounded-lg bg-gray-50 p-3">
-            <h4 className="mb-2 text-sm font-medium text-gray-900">강수 확률</h4>
-            <div className="space-y-1">
-              {forecast.hourlyShortTermForecasts
-                .filter((_, index) => index % 3 === 0)
-                .map((hourly, index) => (
-                  <div key={index} className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">
-                      {new Date(`${forecast.date}T${hourly.time}`).toLocaleTimeString("ko-KR", {
-                        hour: "2-digit",
-                        hour12: true
-                      }).replace(/시$/, '')}시
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <div className="h-1.5 w-8 rounded-full bg-gray-200">
-                        <div 
-                          className="h-1.5 rounded-full bg-blue-500"
-                          style={{ width: `${hourly.precipitationProbability || 0}%` }}
-                        ></div>
-                      </div>
-                      <span className="font-medium w-8 text-right">
-                        {hourly.precipitationProbability || 0}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-
-          {/* 바람 정보 */}
-          <div className="rounded-lg bg-gray-50 p-3">
+          {/* 바람 정보 (4칸) */}
+          <div className="rounded-lg bg-gray-50 p-3 lg:col-span-4">
             <h4 className="mb-2 text-sm font-medium text-gray-900">바람</h4>
             <div className="space-y-1">
               {forecast.hourlyShortTermForecasts
                 .filter((_, index) => index % 3 === 0)
-                .map((hourly, index) => {
-                  const windSpeedLabel = hourly.windSpeedType === "WEAK" ? "약함" :
-                                       hourly.windSpeedType === "MODERATE" ? "보통" : "강함";
-                  return (
-                    <div key={index} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600">
-                        {new Date(`${forecast.date}T${hourly.time}`).toLocaleTimeString("ko-KR", {
-                          hour: "2-digit",
-                          hour12: true
-                        })}
+                .map((hourly, index) => (
+                  <div key={index} className="flex items-center p-1 text-xs">
+                    <span className="w-10 text-center font-medium text-gray-600">
+                      {hourly.time.slice(0, 2)}시
+                    </span>
+
+                    <div className="ml-2 flex w-20 items-center gap-1">
+                      {getWindArrow(
+                        getWindDirection(
+                          hourly.windDirection,
+                          hourly.windUComponent,
+                          hourly.windVComponent,
+                        ),
+                      )}
+                      <span className="whitespace-nowrap text-xs text-gray-500">
+                        {getWindDirectionText(
+                          getWindDirection(
+                            hourly.windDirection,
+                            hourly.windUComponent,
+                            hourly.windVComponent,
+                          ),
+                        )}
                       </span>
-                      <div className="text-right">
-                        <span className="font-medium text-gray-900">
-                          {(hourly.windSpeed || 0).toFixed(1)}m/s
-                        </span>
-                        <span className="ml-1 text-gray-500 text-xs">
-                          {windSpeedLabel}
-                        </span>
-                      </div>
                     </div>
-                  );
-                })}
+
+                    <div className="ml-2 h-1.5 flex-1 rounded-full bg-gray-200">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(((hourly.windSpeed || 0) / 15) * 100, 100)}%`,
+                          backgroundColor: getWindSpeedColor(
+                            hourly.windSpeed || 0,
+                          ),
+                        }}
+                      ></div>
+                    </div>
+
+                    <div className="ml-1 flex w-12 items-center justify-end">
+                      <span
+                        className="text-right text-xs font-medium"
+                        style={{
+                          color: getWindSpeedColor(hourly.windSpeed || 0),
+                        }}
+                      >
+                        {(hourly.windSpeed || 0).toFixed(1)}
+                      </span>
+                      <span
+                        className="ml-0.5 text-xs font-medium"
+                        style={{
+                          color: getWindSpeedColor(hourly.windSpeed || 0),
+                        }}
+                      >
+                        m/s
+                      </span>
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
@@ -556,13 +881,14 @@ export default function DashboardPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderTemperatureChart = (hourlyData: any[]) => {
-    const maxTemp = Math.max(...hourlyData.map(h => h.temperature || 0));
-    const minTemp = Math.min(...hourlyData.map(h => h.temperature || 0));
+    const maxTemp = Math.max(...hourlyData.map((h) => h.temperature || 0));
+    const minTemp = Math.min(...hourlyData.map((h) => h.temperature || 0));
     const tempRange = maxTemp - minTemp || 10;
-    
+
     const points = hourlyData.map((hourly, index) => {
-      const x = 50 + (index * (700 / Math.max(hourlyData.length - 1, 1)));
-      const y = 100 - ((hourly.temperature || minTemp) - minTemp) / tempRange * 70;
+      const x = 40 + index * (720 / Math.max(hourlyData.length - 1, 1));
+      const y =
+        140 - (((hourly.temperature || minTemp) - minTemp) / tempRange) * 100;
       return { x, y, temp: hourly.temperature, time: hourly.time };
     });
 
@@ -570,14 +896,14 @@ export default function DashboardPage() {
       <g>
         {/* 온도 라인 */}
         <polyline
-          points={points.map(p => `${p.x},${p.y}`).join(' ')}
+          points={points.map((p) => `${p.x},${p.y}`).join(" ")}
           fill="none"
           stroke="#ef4444"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        
+
         {/* 온도 점과 라벨 */}
         {points.map((point, index) => (
           <g key={index}>
@@ -600,7 +926,7 @@ export default function DashboardPage() {
             {index % 3 === 0 && (
               <text
                 x={point.x}
-                y={120}
+                y={155}
                 textAnchor="middle"
                 className="fill-gray-500 text-xs"
               >
@@ -711,12 +1037,18 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3">
                 {weatherData?.data?.updatedDate && (
                   <span className="text-sm text-gray-500">
-                    업데이트: {new Date(weatherData.data.updatedDate).toLocaleString("ko-KR", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit"
-                    })}
+                    업데이트:{" "}
+                    {new Date(weatherData.data.updatedDate).toLocaleString(
+                      "ko-KR",
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      },
+                    )}
                   </span>
                 )}
                 <button
@@ -767,7 +1099,7 @@ export default function DashboardPage() {
                 { key: "all", label: "전체" },
                 { key: "today", label: "오늘" },
                 { key: "tomorrow", label: "내일" },
-                { key: "dayAfter", label: "모레" }
+                { key: "dayAfter", label: "모레" },
               ].map((tab) => (
                 <button
                   key={tab.key}

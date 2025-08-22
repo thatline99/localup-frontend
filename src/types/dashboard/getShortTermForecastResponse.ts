@@ -1,19 +1,11 @@
 export interface HourlyShortTermForecast {
   time: string;
   precipitationProbability: number | null;
-  precipitationType: "NONE" | "RAIN" | "RAIN_SNOW" | "SNOW" | null;
+  precipitationType: "NONE" | "RAIN" | "RAIN_AND_SNOW" | "SHOWER" | null;
   precipitationAmount: "NONE" | string | null;
   humidity: number | null;
   snowfallAmount: "NONE" | string;
-  skyCondition:
-    | "SUNNY"
-    | "CLOUDY"
-    | "PARTLY_CLOUDY"
-    | "RAINY"
-    | "SHOWER"
-    | "THUNDERSTORM"
-    | "SNOW"
-    | "FOG";
+  skyCondition: "SUNNY" | "PARTLY_CLOUDY" | "CLOUDY";
   temperature: number | null;
   windUComponent: number | null;
   windVComponent: number | null;
