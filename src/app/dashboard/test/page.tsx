@@ -699,16 +699,110 @@ export default function DashboardPage() {
         <div className="text-center text-gray-500">데이터가 없습니다.</div>
       );
 
+    // 평균값 계산
+    const avgTemperature =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum, h) => sum + (h.temperature || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+    const avgPrecipitation =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum, h) => sum + (h.precipitationProbability || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+    const avgHumidity =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum, h) => sum + (h.humidity || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+    const avgWindSpeed =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum, h) => sum + (h.windSpeed || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+
     return (
       <div className="space-y-4">
-        {/* 상단: 온도 차트 (전체 너비) */}
-        <div className="rounded-lg bg-gray-50 p-3">
-          <h3 className="mb-2 text-base font-medium text-gray-900">
-            시간별 온도
-          </h3>
-          <svg className="h-40 w-full" viewBox="0 0 800 160">
-            {renderTemperatureChart(forecast.hourlyShortTermForecasts)}
-          </svg>
+        {/* 상단: 온도 차트와 평균 데이터 */}
+        <div className="grid grid-cols-10 gap-3">
+          {/* 온도 차트 (8칸) */}
+          <div className="col-span-8 rounded-lg bg-gray-50 p-3">
+            <h3 className="mb-2 text-base font-medium text-gray-900">
+              시간별 온도
+            </h3>
+            <svg className="h-40 w-full" viewBox="0 0 800 160">
+              {renderTemperatureChart(forecast.hourlyShortTermForecasts)}
+            </svg>
+          </div>
+
+          {/* 평균 데이터 (2칸) */}
+          <div className="col-span-2 flex flex-col gap-2">
+            {/* 평균 온도 */}
+            <div className="flex flex-1 items-center justify-between rounded-lg bg-gray-50 p-3">
+              <span className="text-sm font-medium text-gray-900">
+                평균 온도
+              </span>
+              <div className="flex items-center">
+                <span className="text-2xl font-bold text-red-500">
+                  {avgTemperature.toFixed(1)}
+                </span>
+                <span className="ml-1 text-lg font-medium text-red-500">
+                  °C
+                </span>
+              </div>
+            </div>
+
+            {/* 평균 강수 확률 */}
+            <div className="flex flex-1 items-center justify-between rounded-lg bg-gray-50 p-3">
+              <span className="text-sm font-medium text-gray-900">
+                평균 강수 확률
+              </span>
+              <div className="flex items-center">
+                <span className="text-2xl font-bold text-blue-600">
+                  {avgPrecipitation.toFixed(0)}
+                </span>
+                <span className="ml-1 text-lg font-medium text-blue-600">
+                  %
+                </span>
+              </div>
+            </div>
+
+            {/* 평균 습도 */}
+            <div className="flex flex-1 items-center justify-between rounded-lg bg-gray-50 p-3">
+              <span className="text-sm font-medium text-gray-900">
+                평균 습도
+              </span>
+              <div className="flex items-center">
+                <span className="text-2xl font-bold text-green-600">
+                  {avgHumidity.toFixed(0)}
+                </span>
+                <span className="ml-1 text-lg font-medium text-green-600">
+                  %
+                </span>
+              </div>
+            </div>
+
+            {/* 평균 풍속 */}
+            <div className="flex flex-1 items-center justify-between rounded-lg bg-gray-50 p-3">
+              <span className="text-sm font-medium text-gray-900">
+                평균 풍속
+              </span>
+              <div className="flex items-center">
+                <span
+                  className="text-2xl font-bold"
+                  style={{ color: getWindSpeedColor(avgWindSpeed) }}
+                >
+                  {avgWindSpeed.toFixed(1)}
+                </span>
+                <span
+                  className="ml-1 text-lg font-medium"
+                  style={{ color: getWindSpeedColor(avgWindSpeed) }}
+                >
+                  m/s
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 하단: 강수, 습도, 바람 정보 */}
@@ -886,7 +980,7 @@ export default function DashboardPage() {
     const tempRange = maxTemp - minTemp || 10;
 
     const points = hourlyData.map((hourly, index) => {
-      const x = 40 + index * (720 / Math.max(hourlyData.length - 1, 1));
+      const x = 20 + index * (760 / Math.max(hourlyData.length - 1, 1));
       const y =
         140 - (((hourly.temperature || minTemp) - minTemp) / tempRange) * 100;
       return { x, y, temp: hourly.temperature, time: hourly.time };
