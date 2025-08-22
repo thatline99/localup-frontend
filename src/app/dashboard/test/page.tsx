@@ -14,6 +14,7 @@ import {
 import {
   GetShortTermForecastResponse,
   ShortTermForecast,
+  HourlyShortTermForecast,
 } from "@/types/dashboard/getShortTermForecastResponse";
 import { PageLayout } from "@/components/dashboard/PageLayout";
 import Script from "next/script";
@@ -43,6 +44,8 @@ export default function DashboardPage() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
   const [weatherCardExpanded, setWeatherCardExpanded] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // 평균값 애니메이션을 위한 state
   const [animatedTemp, setAnimatedTemp] = useState(0);
@@ -89,6 +92,20 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
+  // 화면 크기 감지
+  useEffect(() => {
+    setMounted(true);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // 초기값 설정
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(() => {
     if (dashboardData && mapInstanceRef.current) {
       createMarkers(mapInstanceRef.current);
@@ -112,22 +129,22 @@ export default function DashboardPage() {
     // 평균값 계산
     const avgTemperature =
       forecast.hourlyShortTermForecasts.reduce(
-        (sum: number, h: any) => sum + (h.temperature || 0),
+        (sum, h) => sum + (h.temperature || 0),
         0,
       ) / forecast.hourlyShortTermForecasts.length;
     const avgPrecipitation =
       forecast.hourlyShortTermForecasts.reduce(
-        (sum: number, h: any) => sum + (h.precipitationProbability || 0),
+        (sum, h) => sum + (h.precipitationProbability || 0),
         0,
       ) / forecast.hourlyShortTermForecasts.length;
     const avgHumidity =
       forecast.hourlyShortTermForecasts.reduce(
-        (sum: number, h: any) => sum + (h.humidity || 0),
+        (sum, h) => sum + (h.humidity || 0),
         0,
       ) / forecast.hourlyShortTermForecasts.length;
     const avgWindSpeed =
       forecast.hourlyShortTermForecasts.reduce(
-        (sum: number, h: any) => sum + (h.windSpeed || 0),
+        (sum, h) => sum + (h.windSpeed || 0),
         0,
       ) / forecast.hourlyShortTermForecasts.length;
 
@@ -466,90 +483,6 @@ export default function DashboardPage() {
     }
   };
 
-  const getPrecipitationAmountText = (precipitationAmount: string | null) => {
-    if (
-      !precipitationAmount ||
-      precipitationAmount === "NONE" ||
-      precipitationAmount === "강수없음"
-    ) {
-      return "없음";
-    }
-
-    // 실제 강수량 값인 경우 (예: "2.5mm")
-    if (
-      typeof precipitationAmount === "string" &&
-      precipitationAmount.includes("mm")
-    ) {
-      return precipitationAmount;
-    }
-
-    // 코드 값인 경우
-    switch (precipitationAmount) {
-      case "1":
-        return "약함 (<3mm)";
-      case "2":
-        return "보통 (3~15mm)";
-      case "3":
-        return "강함 (>15mm)";
-      default:
-        return precipitationAmount || "없음";
-    }
-  };
-
-  const getSnowfallAmountText = (snowfallAmount: string | null) => {
-    if (
-      !snowfallAmount ||
-      snowfallAmount === "NONE" ||
-      snowfallAmount === "적설없음"
-    ) {
-      return "없음";
-    }
-
-    // 실제 적설량 값인 경우 (예: "2.5cm")
-    if (typeof snowfallAmount === "string" && snowfallAmount.includes("cm")) {
-      return snowfallAmount;
-    }
-
-    // 코드 값인 경우
-    switch (snowfallAmount) {
-      case "0":
-      case "NONE":
-        return "없음";
-      case "1":
-        return "보통 (<1cm)";
-      case "2":
-        return "많음 (≥1cm)";
-      default:
-        return snowfallAmount || "없음";
-    }
-  };
-
-  const getSnowfallIcon = (snowfallAmount: string | null) => {
-    if (
-      !snowfallAmount ||
-      snowfallAmount === "NONE" ||
-      snowfallAmount === "적설없음" ||
-      snowfallAmount === "0"
-    ) {
-      return "";
-    }
-
-    switch (snowfallAmount) {
-      case "1":
-        return "❄️";
-      case "2":
-        return "🌨️";
-      default:
-        if (
-          typeof snowfallAmount === "string" &&
-          snowfallAmount.includes("cm")
-        ) {
-          return "🌨️";
-        }
-        return "";
-    }
-  };
-
   // 바람 방향 계산 (바람이 부는 방향)
   const getWindDirection = (
     windDirection: number | null,
@@ -683,7 +616,7 @@ export default function DashboardPage() {
     if (!weatherData?.data?.shortTermForecasts) return null;
 
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {weatherData.data.shortTermForecasts
           .slice(0, 3)
           .map((forecast: ShortTermForecast, index: number) => {
@@ -712,19 +645,6 @@ export default function DashboardPage() {
                 hourly.snowfallAmount &&
                 hourly.snowfallAmount !== "NONE" &&
                 hourly.snowfallAmount !== "적설없음",
-            );
-
-            // 최대 적설량 찾기
-            const maxSnowfall = forecast.hourlyShortTermForecasts.reduce(
-              (max, hourly) => {
-                if (!hourly.snowfallAmount || hourly.snowfallAmount === "NONE")
-                  return max;
-                if (hourly.snowfallAmount === "2") return "많음";
-                if (hourly.snowfallAmount === "1" && max !== "많음")
-                  return "보통";
-                return max;
-              },
-              "",
             );
 
             // 평균값 계산
@@ -825,34 +745,12 @@ export default function DashboardPage() {
         <div className="text-center text-gray-500">데이터가 없습니다.</div>
       );
 
-    // 평균값 계산
-    const avgTemperature =
-      forecast.hourlyShortTermForecasts.reduce(
-        (sum, h) => sum + (h.temperature || 0),
-        0,
-      ) / forecast.hourlyShortTermForecasts.length;
-    const avgPrecipitation =
-      forecast.hourlyShortTermForecasts.reduce(
-        (sum, h) => sum + (h.precipitationProbability || 0),
-        0,
-      ) / forecast.hourlyShortTermForecasts.length;
-    const avgHumidity =
-      forecast.hourlyShortTermForecasts.reduce(
-        (sum, h) => sum + (h.humidity || 0),
-        0,
-      ) / forecast.hourlyShortTermForecasts.length;
-    const avgWindSpeed =
-      forecast.hourlyShortTermForecasts.reduce(
-        (sum, h) => sum + (h.windSpeed || 0),
-        0,
-      ) / forecast.hourlyShortTermForecasts.length;
-
     return (
       <div className="space-y-4">
         {/* 상단: 온도 차트와 평균 데이터 */}
-        <div className="grid grid-cols-10 gap-3">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-10">
           {/* 온도 차트 (8칸) */}
-          <div className="col-span-8 rounded-lg bg-gray-50 p-3">
+          <div className="rounded-lg bg-gray-50 p-3 xl:col-span-8">
             <h3 className="mb-2 text-base font-medium text-gray-900">
               시간별 온도
             </h3>
@@ -861,15 +759,12 @@ export default function DashboardPage() {
               viewBox="0 0 800 180"
               key={`temp-chart-${selectedWeatherTab}-${forecast.date}`}
             >
-              {renderTemperatureChart(
-                forecast.hourlyShortTermForecasts,
-                `${selectedWeatherTab}-${forecast.date}`,
-              )}
+              {renderTemperatureChart(forecast.hourlyShortTermForecasts)}
             </svg>
           </div>
 
           {/* 평균 데이터 (2칸) */}
-          <div className="col-span-2 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 md:flex-row xl:col-span-2 xl:flex-col">
             {/* 평균 온도 */}
             <div className="flex flex-1 items-center justify-between rounded-lg bg-gray-50 p-3">
               <span className="text-sm font-medium text-gray-900">
@@ -1106,14 +1001,18 @@ export default function DashboardPage() {
     );
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderTemperatureChart = (hourlyData: any[], animationKey: string) => {
-    const maxTemp = Math.max(...hourlyData.map((h) => h.temperature || 0));
-    const minTemp = Math.min(...hourlyData.map((h) => h.temperature || 0));
+  const renderTemperatureChart = (hourlyData: HourlyShortTermForecast[]) => {
+    // 모바일에서는 3시간 간격 데이터만 사용 (mounted 후에만 적용)
+    const filteredData = mounted && isMobile
+      ? hourlyData.filter((_, index) => index % 3 === 0)
+      : hourlyData;
+
+    const maxTemp = Math.max(...filteredData.map((h) => h.temperature || 0));
+    const minTemp = Math.min(...filteredData.map((h) => h.temperature || 0));
     const tempRange = maxTemp - minTemp || 10;
 
-    const points = hourlyData.map((hourly, index) => {
-      const x = 20 + index * (760 / Math.max(hourlyData.length - 1, 1));
+    const points = filteredData.map((hourly, index) => {
+      const x = 20 + index * (760 / Math.max(filteredData.length - 1, 1));
       const y =
         140 - (((hourly.temperature || minTemp) - minTemp) / tempRange) * 100;
       return { x, y, temp: hourly.temperature, time: hourly.time };
@@ -1338,7 +1237,6 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 {weatherData?.data?.updatedDate && weatherCardExpanded && (
                   <span className="text-sm text-gray-500">
-                    업데이트:{" "}
                     {(() => {
                       const date = new Date(weatherData.data.updatedDate);
                       const year = date.getFullYear();
@@ -1349,7 +1247,18 @@ export default function DashboardPage() {
                       const day = String(date.getDate()).padStart(2, "0");
                       const hour = String(date.getHours()).padStart(2, "0");
                       const minute = String(date.getMinutes()).padStart(2, "0");
-                      return `${year}년 ${month}월 ${day}일 ${hour}:${minute}`;
+
+                      // 모바일에서는 짧은 형식, 데스크톱에서는 긴 형식
+                      return (
+                        <>
+                          <span className="hidden sm:inline">
+                            업데이트: {year}년 {month}월 {day}일 {hour}:{minute}
+                          </span>
+                          <span className="inline sm:hidden">
+                            {year}.{month}.{day} {hour}:{minute}
+                          </span>
+                        </>
+                      );
                     })()}
                   </span>
                 )}
@@ -1424,7 +1333,11 @@ export default function DashboardPage() {
                   ].map((tab) => (
                     <button
                       key={tab.key}
-                      onClick={() => setSelectedWeatherTab(tab.key as any)}
+                      onClick={() =>
+                        setSelectedWeatherTab(
+                          tab.key as "all" | "today" | "tomorrow" | "dayAfter",
+                        )
+                      }
                       className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                         selectedWeatherTab === tab.key
                           ? "bg-white text-blue-600 shadow-sm"
@@ -1441,13 +1354,27 @@ export default function DashboardPage() {
                   <div className="animate-pulse">
                     {selectedWeatherTab === "all" ? (
                       // 전체 탭 스켈레톤
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                         {[1, 2, 3].map((i) => (
-                          <div key={i} className="rounded-lg bg-gray-200 p-4">
-                            <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-gray-300"></div>
-                            <div className="mx-auto mb-1 h-4 w-20 rounded bg-gray-300"></div>
-                            <div className="mx-auto h-6 w-24 rounded bg-gray-300"></div>
-                            <div className="mx-auto mt-2 h-3 w-16 rounded bg-gray-300"></div>
+                          <div key={i} className="rounded-lg bg-gray-200 p-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-gray-300"></div>
+                                <div className="space-y-1">
+                                  <div className="h-4 w-12 rounded bg-gray-300"></div>
+                                  <div className="h-3 w-16 rounded bg-gray-300"></div>
+                                </div>
+                              </div>
+                              <div className="h-5 w-20 rounded bg-gray-300"></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 border-t border-gray-300 pt-2">
+                              {[1, 2, 3].map((j) => (
+                                <div key={j} className="text-center">
+                                  <div className="mx-auto mb-1 h-3 w-16 rounded bg-gray-300"></div>
+                                  <div className="mx-auto h-4 w-10 rounded bg-gray-300"></div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1455,12 +1382,12 @@ export default function DashboardPage() {
                       // 상세 탭 스켈레톤
                       <div className="space-y-4">
                         {/* 온도 차트 스켈레톤 */}
-                        <div className="grid grid-cols-10 gap-3">
-                          <div className="col-span-8 rounded-lg bg-gray-200 p-3">
+                        <div className="grid grid-cols-1 gap-3 xl:grid-cols-10">
+                          <div className="rounded-lg bg-gray-200 p-3 xl:col-span-8">
                             <div className="mb-2 h-5 w-24 rounded bg-gray-300"></div>
                             <div className="h-48 rounded bg-gray-300"></div>
                           </div>
-                          <div className="col-span-2 flex flex-col gap-2">
+                          <div className="flex flex-col gap-2 md:flex-row xl:col-span-2 xl:flex-col">
                             {[1, 2, 3, 4].map((i) => (
                               <div
                                 key={i}
@@ -1535,10 +1462,7 @@ export default function DashboardPage() {
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span>
-                  데이터 제공: 기상청 | 기상청_단기예보 ((구)_동네예보)
-                  조회서비스
-                </span>
+                <span>데이터 제공: 기상청</span>
               </div>
             </div>
           )}
