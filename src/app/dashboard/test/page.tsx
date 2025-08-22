@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedWeatherTab, setSelectedWeatherTab] = useState<"all" | "today" | "tomorrow" | "dayAfter">("all");
   const [selectedAttraction, setSelectedAttraction] = useState<number | null>(
     null,
   );
@@ -365,6 +366,253 @@ export default function DashboardPage() {
     );
   };
 
+  const getFilteredWeatherData = () => {
+    if (!weatherData?.data?.shortTermForecasts) return [];
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const dayAfter = new Date(today);
+    dayAfter.setDate(today.getDate() + 2);
+    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+
+    switch (selectedWeatherTab) {
+      case "today":
+        return weatherData.data.shortTermForecasts.filter(f => f.date === todayStr);
+      case "tomorrow":
+        return weatherData.data.shortTermForecasts.filter(f => f.date === tomorrowStr);
+      case "dayAfter":
+        return weatherData.data.shortTermForecasts.filter(f => f.date === dayAfterStr);
+      default:
+        return weatherData.data.shortTermForecasts;
+    }
+  };
+
+  const renderWeatherContent = () => {
+    const filteredData = getFilteredWeatherData();
+    
+    if (selectedWeatherTab === "all") {
+      return renderWeatherOverview();
+    } else {
+      return renderDetailedWeather(filteredData[0]);
+    }
+  };
+
+  const renderWeatherOverview = () => {
+    if (!weatherData?.data?.shortTermForecasts) return null;
+    
+    return (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {weatherData.data.shortTermForecasts
+          .slice(0, 3)
+          .map((forecast: ShortTermForecast, index: number) => {
+            const dominantCondition = getDominantWeatherCondition(
+              forecast.hourlyShortTermForecasts,
+            );
+            const dayNames = ["오늘", "내일", "모레"];
+            return (
+              <div
+                key={index}
+                className="rounded-lg bg-gray-50 p-4 text-center"
+              >
+                <div className="mb-2 text-3xl">
+                  {getWeatherIcon(dominantCondition)}
+                </div>
+                <div className="mb-1 text-sm text-gray-600">
+                  {dayNames[index]} ({new Date(forecast.date).toLocaleDateString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                  })})
+                </div>
+                <div className="text-lg font-semibold">
+                  <span className="text-red-500">
+                    {forecast.dailyMaximumTemperature ?? "-"}°
+                  </span>{" "}
+                  /{" "}
+                  <span className="text-blue-500">
+                    {forecast.dailyMinimumTemperature ?? "-"}°
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+    );
+  };
+
+  const renderDetailedWeather = (forecast: ShortTermForecast | undefined) => {
+    if (!forecast) return <div className="text-center text-gray-500">데이터가 없습니다.</div>;
+    
+    return (
+      <div className="space-y-4">
+        {/* 온도 차트 */}
+        <div>
+          <h3 className="mb-2 text-base font-medium text-gray-900">시간별 온도</h3>
+          <div className="rounded-lg bg-gray-50 p-3">
+            <svg className="h-32 w-full" viewBox="0 0 800 130">
+              {renderTemperatureChart(forecast.hourlyShortTermForecasts)}
+            </svg>
+          </div>
+        </div>
+
+        {/* 상세 정보 그리드 */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* 습도 */}
+          <div className="rounded-lg bg-gray-50 p-3">
+            <h4 className="mb-2 text-sm font-medium text-gray-900">습도</h4>
+            <div className="space-y-1">
+              {forecast.hourlyShortTermForecasts
+                .filter((_, index) => index % 3 === 0)
+                .map((hourly, index) => (
+                  <div key={index} className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">
+                      {new Date(`${forecast.date}T${hourly.time}`).toLocaleTimeString("ko-KR", {
+                        hour: "2-digit",
+                        hour12: true
+                      }).replace(/시$/, '')}시
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <div className="h-1.5 w-8 rounded-full bg-gray-200">
+                        <div 
+                          className="h-1.5 rounded-full bg-green-500"
+                          style={{ width: `${hourly.humidity || 0}%` }}
+                        ></div>
+                      </div>
+                      <span className="font-medium w-8 text-right">
+                        {hourly.humidity || 0}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* 강수확률 */}
+          <div className="rounded-lg bg-gray-50 p-3">
+            <h4 className="mb-2 text-sm font-medium text-gray-900">강수 확률</h4>
+            <div className="space-y-1">
+              {forecast.hourlyShortTermForecasts
+                .filter((_, index) => index % 3 === 0)
+                .map((hourly, index) => (
+                  <div key={index} className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">
+                      {new Date(`${forecast.date}T${hourly.time}`).toLocaleTimeString("ko-KR", {
+                        hour: "2-digit",
+                        hour12: true
+                      }).replace(/시$/, '')}시
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <div className="h-1.5 w-8 rounded-full bg-gray-200">
+                        <div 
+                          className="h-1.5 rounded-full bg-blue-500"
+                          style={{ width: `${hourly.precipitationProbability || 0}%` }}
+                        ></div>
+                      </div>
+                      <span className="font-medium w-8 text-right">
+                        {hourly.precipitationProbability || 0}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* 바람 정보 */}
+          <div className="rounded-lg bg-gray-50 p-3">
+            <h4 className="mb-2 text-sm font-medium text-gray-900">바람</h4>
+            <div className="space-y-1">
+              {forecast.hourlyShortTermForecasts
+                .filter((_, index) => index % 3 === 0)
+                .map((hourly, index) => {
+                  const windSpeedLabel = hourly.windSpeedType === "WEAK" ? "약함" :
+                                       hourly.windSpeedType === "MODERATE" ? "보통" : "강함";
+                  return (
+                    <div key={index} className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">
+                        {new Date(`${forecast.date}T${hourly.time}`).toLocaleTimeString("ko-KR", {
+                          hour: "2-digit",
+                          hour12: true
+                        })}
+                      </span>
+                      <div className="text-right">
+                        <span className="font-medium text-gray-900">
+                          {(hourly.windSpeed || 0).toFixed(1)}m/s
+                        </span>
+                        <span className="ml-1 text-gray-500 text-xs">
+                          {windSpeedLabel}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderTemperatureChart = (hourlyData: any[]) => {
+    const maxTemp = Math.max(...hourlyData.map(h => h.temperature || 0));
+    const minTemp = Math.min(...hourlyData.map(h => h.temperature || 0));
+    const tempRange = maxTemp - minTemp || 10;
+    
+    const points = hourlyData.map((hourly, index) => {
+      const x = 50 + (index * (700 / Math.max(hourlyData.length - 1, 1)));
+      const y = 100 - ((hourly.temperature || minTemp) - minTemp) / tempRange * 70;
+      return { x, y, temp: hourly.temperature, time: hourly.time };
+    });
+
+    return (
+      <g>
+        {/* 온도 라인 */}
+        <polyline
+          points={points.map(p => `${p.x},${p.y}`).join(' ')}
+          fill="none"
+          stroke="#ef4444"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        
+        {/* 온도 점과 라벨 */}
+        {points.map((point, index) => (
+          <g key={index}>
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r="3"
+              fill="#ef4444"
+              stroke="#fff"
+              strokeWidth="1"
+            />
+            <text
+              x={point.x}
+              y={point.y - 8}
+              textAnchor="middle"
+              className="fill-gray-700 text-xs font-medium"
+            >
+              {point.temp}°
+            </text>
+            {index % 3 === 0 && (
+              <text
+                x={point.x}
+                y={120}
+                textAnchor="middle"
+                className="fill-gray-500 text-xs"
+              >
+                {point.time?.slice(0, 2)}시
+              </text>
+            )}
+          </g>
+        ))}
+      </g>
+    );
+  };
+
   if (loading) {
     return (
       <PageLayout title="대시보드" description="데이터를 불러오는 중...">
@@ -456,82 +704,87 @@ export default function DashboardPage() {
       {/* 2열 그리드 레이아웃 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* 첫 번째 행 - 날씨 카드 */}
-        <div className="rounded-lg bg-white p-6 shadow">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">날씨 정보</h2>
-            <button
-              onClick={async () => {
-                setWeatherRefreshing(true);
-                try {
-                  const weatherResponse = await getShortTermForecast();
-                  if (
-                    weatherResponse.code === "SUCCESS" &&
-                    weatherResponse.data
-                  ) {
-                    setWeatherData(weatherResponse);
-                  }
-                } catch {
-                  setError("날씨 데이터 새로고침에 실패했습니다.");
-                } finally {
-                  setWeatherRefreshing(false);
-                }
-              }}
-              disabled={weatherRefreshing}
-              className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-              title="날씨 정보 새로고침"
-            >
-              {weatherRefreshing ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+        <div className="rounded-lg bg-white shadow lg:col-span-2">
+          <div className="p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">날씨 정보</h2>
+              <div className="flex items-center gap-3">
+                {weatherData?.data?.updatedDate && (
+                  <span className="text-sm text-gray-500">
+                    업데이트: {new Date(weatherData.data.updatedDate).toLocaleString("ko-KR", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </span>
+                )}
+                <button
+                  onClick={async () => {
+                    setWeatherRefreshing(true);
+                    try {
+                      const weatherResponse = await getShortTermForecast();
+                      if (
+                        weatherResponse.code === "SUCCESS" &&
+                        weatherResponse.data
+                      ) {
+                        setWeatherData(weatherResponse);
+                      }
+                    } catch {
+                      setError("날씨 데이터 새로고침에 실패했습니다.");
+                    } finally {
+                      setWeatherRefreshing(false);
+                    }
+                  }}
+                  disabled={weatherRefreshing}
+                  className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="날씨 정보 새로고침"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              )}
-            </button>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {weatherData.data.shortTermForecasts
-              .slice(0, 3)
-              .map((forecast: ShortTermForecast, index: number) => {
-                const dominantCondition = getDominantWeatherCondition(
-                  forecast.hourlyShortTermForecasts,
-                );
-                return (
-                  <div
-                    key={index}
-                    className="rounded-lg bg-gray-50 p-4 text-center"
-                  >
-                    <div className="mb-2 text-3xl">
-                      {getWeatherIcon(dominantCondition)}
-                    </div>
-                    <div className="mb-1 text-sm text-gray-600">
-                      {new Date(forecast.date).toLocaleDateString("ko-KR", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </div>
-                    <div className="text-lg font-semibold">
-                      <span className="text-red-500">
-                        {forecast.dailyMaximumTemperature ?? "-"}°
-                      </span>{" "}
-                      /{" "}
-                      <span className="text-blue-500">
-                        {forecast.dailyMinimumTemperature ?? "-"}°
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  {weatherRefreshing ? (
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
+                  ) : (
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 날씨 탭 */}
+            <div className="mb-6 flex space-x-1 rounded-lg bg-gray-100 p-1">
+              {[
+                { key: "all", label: "전체" },
+                { key: "today", label: "오늘" },
+                { key: "tomorrow", label: "내일" },
+                { key: "dayAfter", label: "모레" }
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setSelectedWeatherTab(tab.key as any)}
+                  className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    selectedWeatherTab === tab.key
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 날씨 내용 */}
+            {renderWeatherContent()}
           </div>
         </div>
 
