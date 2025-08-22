@@ -1,0 +1,220 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-review:
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' && 
+       github.event.issue.pull_request && 
+       contains(github.event.comment.body, '/review'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get PR details
+        id: pr-details
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr_number = context.payload.pull_request?.number || context.payload.issue?.number;
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr_number
+            });
+            
+            // Get the diff
+            const { data: diff } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr_number,
+              mediaType: {
+                format: 'diff'
+              }
+            });
+            
+            // Get changed files
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr_number
+            });
+            
+            // Save outputs
+            core.setOutput('pr_number', pr_number);
+            core.setOutput('pr_title', pr.title);
+            core.setOutput('pr_body', pr.body || '');
+            core.setOutput('pr_diff', diff);
+            core.setOutput('changed_files', JSON.stringify(files.map(f => f.filename)));
+            
+            return pr_number;
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install anthropic requests
+      
+      - name: Run Claude Review
+        id: claude-review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_NUMBER: ${{ steps.pr-details.outputs.pr_number }}
+          PR_TITLE: ${{ steps.pr-details.outputs.pr_title }}
+          PR_BODY: ${{ steps.pr-details.outputs.pr_body }}
+          PR_DIFF: ${{ steps.pr-details.outputs.pr_diff }}
+          CHANGED_FILES: ${{ steps.pr-details.outputs.changed_files }}
+        run: |
+          cat << 'EOF' > review.py
+          import os
+          import json
+          import sys
+          from anthropic import Anthropic
+          
+          # Initialize Claude client
+          client = Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+          
+          # Get PR details from environment
+          pr_number = os.environ['PR_NUMBER']
+          pr_title = os.environ['PR_TITLE']
+          pr_body = os.environ['PR_BODY']
+          pr_diff = os.environ['PR_DIFF']
+          changed_files = json.loads(os.environ['CHANGED_FILES'])
+          
+          # Truncate diff if too long (Claude has context limits)
+          max_diff_length = 50000
+          if len(pr_diff) > max_diff_length:
+              pr_diff = pr_diff[:max_diff_length] + "\n... (diff truncated)"
+          
+          # Create the review prompt
+          prompt = f"""당신은 전문 코드 리뷰어입니다. 이 Pull Request를 검토하고 건설적인 피드백을 제공해주세요.
+          
+          PR 제목: {pr_title}
+          PR 설명: {pr_body}
+          변경된 파일: {', '.join(changed_files)}
+          
+          변경 사항:
+          ```diff
+          {pr_diff}
+          ```
+          
+          리뷰 결과를 다음 JSON 형식으로 제공해주세요:
+          {{
+              "summary": "전체 PR에 대한 요약 (마크다운 형식, 이모지 포함)",
+              "files": [
+                  {{
+                      "filename": "파일 경로",
+                      "review": "이 파일에 대한 전체적인 리뷰 내용 (마크다운 형식)"
+                  }}
+              ]
+          }}
+          
+          다음 항목들을 검토해주세요:
+          1. 코드 품질: 코드 스타일, 안티패턴, 개선 사항
+          2. 로직과 정확성: 버그나 논리적 오류
+          3. 성능: 성능 관련 우려사항
+          4. 보안: 보안 취약점
+          5. 베스트 프랙티스: 언어/프레임워크 규칙
+          6. 문서화: 변경사항 문서화
+          
+          - 각 파일에 대한 전체적인 피드백을 review 필드에 작성
+          - 전체 PR에 대한 피드백은 summary에 포함
+          - 이모지를 적절히 사용하여 가독성 향상
+          - 모든 응답은 한국어로 작성
+          - JSON만 반환하고 다른 텍스트는 포함하지 마세요"""
+          
+          try:
+              # Call Claude API
+              response = client.messages.create(
+                  model="claude-3-5-sonnet-20241022",
+                  max_tokens=4000,
+                  temperature=0,
+                  messages=[
+                      {
+                          "role": "user",
+                          "content": prompt
+                      }
+                  ]
+              )
+              
+              review_content = response.content[0].text
+              
+              # Parse JSON response
+              import re
+              # Extract JSON from the response (in case there's extra text)
+              json_match = re.search(r'\{.*\}', review_content, re.DOTALL)
+              if json_match:
+                  review_json = json.loads(json_match.group())
+              else:
+                  review_json = json.loads(review_content)
+              
+              # Save review to file for GitHub Actions to use
+              with open('review.json', 'w', encoding='utf-8') as f:
+                  json.dump(review_json, f, ensure_ascii=False, indent=2)
+              
+              # Also save summary for general comment
+              with open('review_summary.md', 'w', encoding='utf-8') as f:
+                  f.write(review_json['summary'])
+              
+              print("Review generated successfully!")
+              
+          except Exception as e:
+              print(f"Error generating review: {str(e)}", file=sys.stderr)
+              sys.exit(1)
+          EOF
+          
+          python review.py
+      
+      - name: Post review comments
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const reviewData = JSON.parse(fs.readFileSync('review.json', 'utf8'));
+            const pr_number = ${{ steps.pr-details.outputs.pr_number }};
+            
+            // Build the review message
+            let reviewBody = `## 🤖 Claude AI 코드 리뷰\n\n`;
+            reviewBody += `### 📋 전체 요약\n${reviewData.summary}\n\n`;
+            
+            // Add file-specific reviews
+            if (reviewData.files && reviewData.files.length > 0) {
+              reviewBody += `### 📁 파일별 리뷰\n\n`;
+              for (const file of reviewData.files) {
+                if (file.review) {
+                  reviewBody += `<details>\n`;
+                  reviewBody += `<summary><b>📝 ${file.filename}</b></summary>\n\n`;
+                  reviewBody += `${file.review}\n\n`;
+                  reviewBody += `</details>\n\n`;
+                }
+              }
+            }
+            
+            reviewBody += `---\n*이 리뷰는 Claude 3.5 Sonnet에 의해 자동으로 생성되었습니다. 새로운 리뷰를 요청하려면 \`/review\` 댓글을 작성하세요.*`;
+            
+            // Post the review as a single comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr_number,
+              body: reviewBody
+            });
