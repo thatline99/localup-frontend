@@ -42,6 +42,12 @@ export default function DashboardPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
+
+  // 평균값 애니메이션을 위한 state
+  const [animatedTemp, setAnimatedTemp] = useState(0);
+  const [animatedPrecip, setAnimatedPrecip] = useState(0);
+  const [animatedHumidity, setAnimatedHumidity] = useState(0);
+  const [animatedWind, setAnimatedWind] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
@@ -93,6 +99,77 @@ export default function DashboardPage() {
       createEventMarkers(eventMapInstanceRef.current);
     }
   }, [dashboardData, selectedEvent]);
+
+  // 평균값 애니메이션 효과
+  useEffect(() => {
+    const filteredData = getFilteredWeatherData();
+    if (!filteredData || filteredData.length === 0) return;
+
+    const forecast = filteredData[0];
+    if (!forecast) return;
+
+    // 평균값 계산
+    const avgTemperature =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum: number, h: any) => sum + (h.temperature || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+    const avgPrecipitation =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum: number, h: any) => sum + (h.precipitationProbability || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+    const avgHumidity =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum: number, h: any) => sum + (h.humidity || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+    const avgWindSpeed =
+      forecast.hourlyShortTermForecasts.reduce(
+        (sum: number, h: any) => sum + (h.windSpeed || 0),
+        0,
+      ) / forecast.hourlyShortTermForecasts.length;
+
+    const duration = 300; // 0.3초
+    const steps = 15;
+    const interval = duration / steps;
+
+    let tempStep = 0;
+    let precipStep = 0;
+    let humidityStep = 0;
+    let windStep = 0;
+
+    const timer = setInterval(() => {
+      tempStep++;
+      precipStep++;
+      humidityStep++;
+      windStep++;
+
+      if (tempStep <= steps) {
+        setAnimatedTemp((avgTemperature * tempStep) / steps);
+      }
+      if (precipStep <= steps) {
+        setAnimatedPrecip((avgPrecipitation * precipStep) / steps);
+      }
+      if (humidityStep <= steps) {
+        setAnimatedHumidity((avgHumidity * humidityStep) / steps);
+      }
+      if (windStep <= steps) {
+        setAnimatedWind((avgWindSpeed * windStep) / steps);
+      }
+
+      if (
+        tempStep > steps &&
+        precipStep > steps &&
+        humidityStep > steps &&
+        windStep > steps
+      ) {
+        clearInterval(timer);
+      }
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [weatherData, selectedWeatherTab]);
 
   function getUniqueCategories(): string[] {
     if (!dashboardData) return [];
@@ -730,8 +807,15 @@ export default function DashboardPage() {
             <h3 className="mb-2 text-base font-medium text-gray-900">
               시간별 온도
             </h3>
-            <svg className="h-40 w-full" viewBox="0 0 800 160">
-              {renderTemperatureChart(forecast.hourlyShortTermForecasts)}
+            <svg
+              className="h-48 w-full"
+              viewBox="0 0 800 180"
+              key={`temp-chart-${selectedWeatherTab}-${forecast.date}`}
+            >
+              {renderTemperatureChart(
+                forecast.hourlyShortTermForecasts,
+                `${selectedWeatherTab}-${forecast.date}`,
+              )}
             </svg>
           </div>
 
@@ -744,7 +828,7 @@ export default function DashboardPage() {
               </span>
               <div className="flex items-center">
                 <span className="text-2xl font-bold text-red-500">
-                  {avgTemperature.toFixed(1)}
+                  {animatedTemp.toFixed(1)}
                 </span>
                 <span className="ml-1 text-lg font-medium text-red-500">
                   °C
@@ -759,7 +843,7 @@ export default function DashboardPage() {
               </span>
               <div className="flex items-center">
                 <span className="text-2xl font-bold text-blue-600">
-                  {avgPrecipitation.toFixed(0)}
+                  {animatedPrecip.toFixed(0)}
                 </span>
                 <span className="ml-1 text-lg font-medium text-blue-600">
                   %
@@ -774,7 +858,7 @@ export default function DashboardPage() {
               </span>
               <div className="flex items-center">
                 <span className="text-2xl font-bold text-green-600">
-                  {avgHumidity.toFixed(0)}
+                  {animatedHumidity.toFixed(0)}
                 </span>
                 <span className="ml-1 text-lg font-medium text-green-600">
                   %
@@ -790,13 +874,13 @@ export default function DashboardPage() {
               <div className="flex items-center">
                 <span
                   className="text-2xl font-bold"
-                  style={{ color: getWindSpeedColor(avgWindSpeed) }}
+                  style={{ color: getWindSpeedColor(animatedWind) }}
                 >
-                  {avgWindSpeed.toFixed(1)}
+                  {animatedWind.toFixed(1)}
                 </span>
                 <span
                   className="ml-1 text-lg font-medium"
-                  style={{ color: getWindSpeedColor(avgWindSpeed) }}
+                  style={{ color: getWindSpeedColor(animatedWind) }}
                 >
                   m/s
                 </span>
@@ -974,7 +1058,7 @@ export default function DashboardPage() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderTemperatureChart = (hourlyData: any[]) => {
+  const renderTemperatureChart = (hourlyData: any[], animationKey: string) => {
     const maxTemp = Math.max(...hourlyData.map((h) => h.temperature || 0));
     const minTemp = Math.min(...hourlyData.map((h) => h.temperature || 0));
     const tempRange = maxTemp - minTemp || 10;
@@ -986,43 +1070,110 @@ export default function DashboardPage() {
       return { x, y, temp: hourly.temperature, time: hourly.time };
     });
 
+    // 부드러운 곡선을 위한 베지어 곡선 경로 생성
+    const createPath = () => {
+      if (points.length < 2) return "";
+
+      let path = `M ${points[0].x},${points[0].y}`;
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const current = points[i];
+        const next = points[i + 1];
+        const controlX1 = current.x + (next.x - current.x) * 0.3;
+        const controlY1 = current.y;
+        const controlX2 = next.x - (next.x - current.x) * 0.3;
+        const controlY2 = next.y;
+
+        path += ` C ${controlX1},${controlY1} ${controlX2},${controlY2} ${next.x},${next.y}`;
+      }
+
+      return path;
+    };
+
     return (
       <g>
+        {/* 배경 그리드 라인 */}
+        {[0, 30, 60, 90, 120].map((y) => (
+          <line
+            key={y}
+            x1="0"
+            y1={20 + y}
+            x2="800"
+            y2={20 + y}
+            stroke="#e5e7eb"
+            strokeWidth="0.5"
+            strokeDasharray="2,4"
+          />
+        ))}
+
+        {/* 온도 라인 그라데이션 */}
+        <defs>
+          <linearGradient id="tempGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.05" />
+          </linearGradient>
+        </defs>
+
+        {/* 클리핑 마스크 */}
+        <defs>
+          <clipPath id={`tempClip-${animationKey}`}>
+            <rect x="0" y="180" width="800" height="180">
+              <animate
+                attributeName="y"
+                from="180"
+                to="0"
+                dur="0.3s"
+                fill="freeze"
+                begin="0s"
+                restart="always"
+              />
+            </rect>
+          </clipPath>
+        </defs>
+
+        {/* 영역 채우기 */}
+        <path
+          d={`${createPath()} L ${points[points.length - 1].x},150 L ${points[0].x},150 Z`}
+          fill="url(#tempGradient)"
+          clipPath={`url(#tempClip-${animationKey})`}
+        />
+
         {/* 온도 라인 */}
-        <polyline
-          points={points.map((p) => `${p.x},${p.y}`).join(" ")}
+        <path
+          d={createPath()}
           fill="none"
           stroke="#ef4444"
-          strokeWidth="2"
+          strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
+          clipPath={`url(#tempClip-${animationKey})`}
         />
 
         {/* 온도 점과 라벨 */}
         {points.map((point, index) => (
-          <g key={index}>
+          <g key={index} clipPath={`url(#tempClip-${animationKey})`}>
             <circle
               cx={point.x}
               cy={point.y}
-              r="3"
+              r="4"
               fill="#ef4444"
               stroke="#fff"
-              strokeWidth="1"
+              strokeWidth="2"
             />
             <text
               x={point.x}
-              y={point.y - 8}
+              y={point.y - 10}
               textAnchor="middle"
-              className="fill-gray-700 text-xs font-medium"
+              className="fill-red-600 text-xs font-bold"
             >
               {point.temp}°
             </text>
             {index % 3 === 0 && (
               <text
                 x={point.x}
-                y={155}
+                y={165}
                 textAnchor="middle"
-                className="fill-gray-500 text-xs"
+                className="fill-gray-700 text-xs font-bold"
               >
                 {point.time?.slice(0, 2)}시
               </text>
