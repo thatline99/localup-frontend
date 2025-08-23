@@ -38,7 +38,6 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(8);
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [periodType, setPeriodType] = useState<'week' | 'month'>('month');
-  const [yearlyDetailExpanded, setYearlyDetailExpanded] = useState(false);
   const [yearlyComparison, setYearlyComparison] = useState<{
     [year: number]: VisitorStatisticsInformation;
   }>({});
@@ -58,7 +57,6 @@ export default function DashboardPage() {
   const [visitorCardExpanded, setVisitorCardExpanded] = useState(true);
   const [visitorRefreshing, setVisitorRefreshing] = useState(false);
   const [visitorDataLoading, setVisitorDataLoading] = useState(false);
-  const [detailStatsExpanded, setDetailStatsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -129,8 +127,8 @@ export default function DashboardPage() {
     const fetchYearlyComparison = async () => {
       setVisitorDataLoading(true);
       try {
-        const currentYear = 2024; // 2024년 기준으로 고정
-        const years = [currentYear, currentYear - 1, currentYear - 2]; // 최근 3년 (2024, 2023, 2022)
+        const currentYear = new Date().getFullYear() - 1; // 작년 기준
+        const years = [currentYear, currentYear - 1, currentYear - 2]; // 최근 3년
         
         const promises = years.map(async (year) => {
           let startDate: string;
@@ -1365,8 +1363,8 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
                 {periodType === 'week'
-                  ? `${selectedMonth}월 ${selectedWeek}주차 연도별 방문자 비교 (2018-2024)`
-                  : `${selectedMonth}월 연도별 방문자 비교 (2018-2024)`
+                  ? `${selectedMonth}월 ${selectedWeek}주차 연도별 방문자 비교 (2018-${new Date().getFullYear() - 1})`
+                  : `${selectedMonth}월 연도별 방문자 비교 (2018-${new Date().getFullYear() - 1})`
                 }
               </h2>
               <div className="flex items-center gap-2">
@@ -1405,7 +1403,7 @@ export default function DashboardPage() {
                         className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         {(() => {
-                          const currentYear = 2024; // 2024년 기준
+                          const currentYear = new Date().getFullYear() - 1; // 작년 기준
                           const lastDay = new Date(currentYear, selectedMonth, 0).getDate();
                           const maxWeeks = Math.ceil(lastDay / 7);
                           return Array.from({ length: maxWeeks }, (_, i) => i + 1).map(week => (
@@ -1423,8 +1421,8 @@ export default function DashboardPage() {
                         setVisitorRefreshing(true);
                         try {
                           // 연도별 비교 데이터 새로고침
-                            const currentYear = 2024; // 2024년 기준으로 고정
-                            const years = [currentYear, currentYear - 1, currentYear - 2]; // 최근 3년 (2024, 2023, 2022)
+                            const currentYear = new Date().getFullYear() - 1; // 작년 기준
+                            const years = [currentYear, currentYear - 1, currentYear - 2]; // 최근 3년
                             
                             const promises = years.map(async (year) => {
                               let startDate: string;
@@ -1580,16 +1578,17 @@ export default function DashboardPage() {
                         <div className="text-sm text-gray-600">전년 대비 증감</div>
                         <div className="mt-1">
                           {(() => {
-                            const curr2024 = yearlyComparison[2024]?.visitorStatistics.reduce(
+                            const lastYear = new Date().getFullYear() - 1;
+                            const currLastYear = yearlyComparison[lastYear]?.visitorStatistics.reduce(
                               (sum, stat) => sum + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
                               0
                             ) || 0;
-                            const curr2023 = yearlyComparison[2023]?.visitorStatistics.reduce(
+                            const currPrevYear = yearlyComparison[lastYear - 1]?.visitorStatistics.reduce(
                               (sum, stat) => sum + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
                               0
                             ) || 0;
-                            const diff = curr2024 - curr2023;
-                            const percent = curr2023 > 0 ? ((diff / curr2023) * 100).toFixed(1) : 0;
+                            const diff = currLastYear - currPrevYear;
+                            const percent = currPrevYear > 0 ? ((diff / currPrevYear) * 100).toFixed(1) : 0;
                             return (
                               <>
                                 <div className={`text-2xl font-bold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -1608,25 +1607,25 @@ export default function DashboardPage() {
                     {/* 연도별 비교 라인 차트 */}
                     <div className="overflow-x-auto">
                       <div className="min-w-[800px]">
-                        <svg className="h-80 w-full" viewBox="0 0 900 320">
+                        <svg className="h-80 w-full" viewBox="0 0 900 340">
                           {/* 배경 */}
-                          <rect x="60" y="30" width="790" height="250" fill="#fafafa" rx="4" />
+                          <rect x="60" y="40" width="790" height="240" fill="#fafafa" rx="4" />
                           
                           {/* Y축 그리드 라인 */}
                           {[0, 1, 2, 3, 4, 5].map((i) => (
                             <g key={i}>
                               <line
                                 x1="60"
-                                y1={280 - i * 50}
+                                y1={280 - i * 48}
                                 x2="850"
-                                y2={280 - i * 50}
+                                y2={280 - i * 48}
                                 stroke="#e5e7eb"
                                 strokeWidth="1"
                               />
                               {/* Y축 값 라벨 */}
                               <text
                                 x="50"
-                                y={285 - i * 50}
+                                y={285 - i * 48}
                                 textAnchor="end"
                                 className="fill-gray-600 text-xs"
                               >
@@ -1651,7 +1650,7 @@ export default function DashboardPage() {
                               x1={60 + ((day - 1) * 780 / 29)}
                               y1="280"
                               x2={60 + ((day - 1) * 780 / 29)}
-                              y2="30"
+                              y2="40"
                               stroke="#f3f4f6"
                               strokeWidth="1"
                             />
@@ -1680,7 +1679,7 @@ export default function DashboardPage() {
                             
                             const points = dailyTotals.map((total, index) => {
                               const x = 60 + (index * 780 / (dailyTotals.length - 1));
-                              const y = 280 - (total / maxValue) * 250;
+                              const y = 280 - (total / maxValue) * 240;
                               return { x, y, value: total };
                             });
                             
@@ -1767,7 +1766,7 @@ export default function DashboardPage() {
                             <text
                               key={day}
                               x={60 + ((day - 1) * 780 / 29)}
-                              y={300}
+                              y={305}
                               textAnchor="middle"
                               className="fill-gray-600 text-xs font-medium"
                             >
@@ -1778,7 +1777,7 @@ export default function DashboardPage() {
                           {/* Y축 라벨 */}
                           <text
                             x="30"
-                            y="20"
+                            y="25"
                             textAnchor="middle"
                             className="fill-gray-700 text-xs font-semibold"
                           >
@@ -1787,124 +1786,6 @@ export default function DashboardPage() {
                         </svg>
                       </div>
                     </div>
-                    
-                    {/* 인사이트 영역 */}
-                    <div className="mt-4 rounded-lg bg-blue-50 p-4">
-                      <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-900">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        AI 인사이트
-                      </h4>
-                      <div className="flex items-center justify-center py-8 text-sm text-gray-500">
-                        <svg className="mr-2 h-5 w-5 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        인사이트 준비 중...
-                      </div>
-                    </div>
-                    
-                    {/* 상세 통계 토글 버튼 */}
-                    <div className="mt-4 flex justify-center">
-                      <button
-                        onClick={() => setYearlyDetailExpanded(!yearlyDetailExpanded)}
-                        className="flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
-                      >
-                        <svg
-                          className={`h-4 w-4 transition-transform duration-200 ${yearlyDetailExpanded ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                        {yearlyDetailExpanded ? '상세 통계 숨기기' : '상세 통계 보기'}
-                      </button>
-                    </div>
-                    
-                    {/* 상세 통계 섹션 */}
-                    {yearlyDetailExpanded && (
-                      <div className="mt-4 space-y-4">
-                        {/* 연도별 상세 통계 */}
-                        <div className="rounded-lg bg-gray-50 p-4">
-                          <h4 className="mb-3 text-sm font-semibold text-gray-900">연도별 상세 분석</h4>
-                          <div className="space-y-3">
-                            {Object.entries(yearlyComparison)
-                              .sort(([a], [b]) => Number(b) - Number(a))
-                              .map(([year, data]) => {
-                                const total = data.visitorStatistics.reduce(
-                                  (sum, stat) => sum + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
-                                  0
-                                );
-                                const avgPerDay = Math.round(total / data.visitorStatistics.length);
-                                
-                                // 전년 대비 증감률 계산
-                                const prevYear = String(Number(year) - 1);
-                                const prevYearData = yearlyComparison[Number(prevYear)];
-                                let growthRate = 0;
-                                if (prevYearData) {
-                                  const prevTotal = prevYearData.visitorStatistics.reduce(
-                                    (sum, stat) => sum + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
-                                    0
-                                  );
-                                  growthRate = ((total - prevTotal) / prevTotal * 100);
-                                }
-                                
-                                return (
-                                  <div key={year} className="rounded-lg bg-white p-3">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <span className="text-lg font-bold text-gray-900">{year}년</span>
-                                        {growthRate !== 0 && (
-                                          <span className={`ml-2 text-sm font-medium ${
-                                            growthRate > 0 ? 'text-green-600' : 'text-red-600'
-                                          }`}>
-                                            {growthRate > 0 ? '▲' : '▼'} {Math.abs(growthRate).toFixed(1)}%
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="text-right">
-                                        <div className="text-sm text-gray-500">총 {total.toLocaleString()}명</div>
-                                        <div className="text-xs text-gray-400">일평균 {avgPerDay.toLocaleString()}명</div>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* 방문자 구성 막대 */}
-                                    <div className="mt-2">
-                                      <div className="flex h-4 overflow-hidden rounded-full bg-gray-200">
-                                        <div
-                                          className="bg-blue-500"
-                                          style={{
-                                            width: `${(data.visitorStatistics.reduce((s, stat) => s + stat.localVisitors, 0) / total) * 100}%`
-                                          }}
-                                        />
-                                        <div
-                                          className="bg-green-500"
-                                          style={{
-                                            width: `${(data.visitorStatistics.reduce((s, stat) => s + stat.domesticVisitors, 0) / total) * 100}%`
-                                          }}
-                                        />
-                                        <div
-                                          className="bg-purple-500"
-                                          style={{
-                                            width: `${(data.visitorStatistics.reduce((s, stat) => s + stat.foreignVisitors, 0) / total) * 100}%`
-                                          }}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   // 데이터 로딩 중
