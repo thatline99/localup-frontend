@@ -14,13 +14,19 @@ async function register(email: string, password: string) {
         body: JSON.stringify({email, password})  
     })
 
-    console.log(response.status)
     if(!response.ok){
         const error = await response.json()
         throw new Error(error.message || '회원가입에 실패했습니다.')
     }
 
-    return await response.json()
+    // 빈 응답 처리
+    const responseText = await response.text()
+    if (!responseText.trim()) {
+        // 백엔드가 빈 응답을 반환한 경우 기본 객체 생성
+        return { id: null, email }
+    }
+
+    return JSON.parse(responseText)
 }
 
 export async function POST(request: NextRequest){
@@ -58,7 +64,7 @@ export async function POST(request: NextRequest){
         }
         
         return NextResponse.json(
-            {error: '회원가입 오류 발생'},
+            {error: '회원가입 오류 발생', details: err instanceof Error ? err.message : 'Unknown error'},
             {status: 500}
         )
     }
