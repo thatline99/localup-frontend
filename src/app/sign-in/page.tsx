@@ -61,67 +61,55 @@ export default function SignInPage() {
     setError(''); // 에러 초기화
 
     try {
+      // 직접 백엔드에 로그인 요청을 보내서 정확한 에러 정보를 받음
+      const directResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:8080/api'}/auth/sign-in`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      if (directResponse.status === 403) {
+        // 403 에러 - 이메일 인증 필요
+        setError('이메일 인증이 완료되지 않았습니다. 인증을 완료해주세요.');
+        return;
+      } else if (directResponse.status === 401) {
+        // 401 에러 - 잘못된 자격증명
+        setError('이메일 또는 비밀번호가 일치하지 않습니다.');
+        return;
+      } else if (!directResponse.ok) {
+        // 기타 서버 에러
+        setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // 백엔드 로그인이 성공했다면 NextAuth로 로그인 처리
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
         redirect: false,
       });
 
-      console.log(result)
-
-      if (result?.error) {
-        // next-auth에서 받은 에러 처리
-        console.log('원본 에러:', result.error);
-        console.log('에러 전체 객체:', JSON.stringify(result, null, 2));
-        
-        const errorMessage = parseAuthError(result.error);
-        setError(errorMessage);
-      } else if (result?.ok) {
+      if (result?.ok) {
         // 로그인 성공 - 세션 새로고침 후 리다이렉트
         await getSession();
         router.push('/dashboard');
         router.refresh();
       } else {
-        // 예상치 못한 상황
-        setError('로그인 중 오류가 발생했습니다.');
+        // NextAuth 로그인 실패
+        setError('로그인 처리 중 오류가 발생했습니다.');
       }
     } catch (error) {
-      console.error('로그인 처리 중 오류:', error);
-      setError('로그인 중 오류가 발생했습니다.');
+      setError('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 에러 메시지 파싱 함수
-  const parseAuthError = (error: string): string => {
-    console.log('파싱할 에러:', error);
-    
-    // 에러 타입별 처리
-    if (error.includes('INVALID_CREDENTIALS') || error === 'INVALID_CREDENTIALS') {
-      return '이메일 또는 비밀번호가 일치하지 않습니다.';
-    } else if (error.includes('ACCOUNT_DISABLED') || error === 'ACCOUNT_DISABLED') {
-      return '가입하신 이메일의 메일함에서 인증을 완료해주세요.';
-    } else if (error.includes('SERVER_ERROR') || error === 'SERVER_ERROR') {
-      return '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-    } else if (error.includes('NETWORK_ERROR') || error === 'NETWORK_ERROR') {
-      return '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
-    } else if (error.includes('MISSING_CREDENTIALS') || error === 'MISSING_CREDENTIALS') {
-      return '이메일과 비밀번호를 입력해주세요.';
-    } else if (error.includes('INVALID_EMAIL') || error === 'INVALID_EMAIL') {
-      return '올바른 이메일 형식이 아닙니다.';
-    } else if (error.includes('PASSWORD_TOO_SHORT') || error === 'PASSWORD_TOO_SHORT') {
-      return '비밀번호는 6자 이상이어야 합니다.';
-    }
-    
-    // 메시지 자체가 이미 사용자 친화적인 경우 그대로 사용
-    if (error.includes('이메일') || error.includes('비밀번호') || error.includes('계정') || error.includes('서버') || error.includes('네트워크')) {
-      return error;
-    }
-    
-    // 기본 에러 처리
-    return '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.';
-  };
 
   return (
     <>
@@ -204,7 +192,6 @@ export default function SignInPage() {
               <button
                 type="button"
                 onClick={() => {
-                  console.log("카카오 로그인 버튼 클릭");
                   signIn('kakao', { 
                     callbackUrl: '/dashboard',
                     redirect: true
