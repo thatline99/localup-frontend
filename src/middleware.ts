@@ -5,7 +5,6 @@ export default auth((req) => {
   const user = req.auth?.user
   const { pathname } = req.nextUrl
 
-  console.log('Middleware - 경로:', pathname, '로그인:', isLoggedIn, '사용자:', user?.email)
 
   // 카카오 로그인 콜백 후 에러 처리
   if (pathname.startsWith('/api/auth/callback/kakao')) {
@@ -16,7 +15,6 @@ export default auth((req) => {
   if (req.auth && !isLoggedIn) {
     const token = req.auth as any;
     if (token.authError) {
-      console.log('인증 에러 감지, 로그인 페이지로 리다이렉트:', token.authError);
       const redirectUrl = new URL('/sign-in', req.nextUrl);
       redirectUrl.searchParams.set('error', token.authError);
       return Response.redirect(redirectUrl);
@@ -25,7 +23,6 @@ export default auth((req) => {
 
   // 사업정보 필요 여부 확인: API로 실제 데이터 존재 여부 체크
   if (isLoggedIn && user?.needsBusinessInfo && !pathname.startsWith('/business-setup') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/api')) {
-    console.log('사업정보 필요 사용자 - 실제 데이터 확인 후 리다이렉트 결정')
     // 실제 사업정보가 있는지 확인하기 위해 대시보드 접근을 허용하고, 
     // 페이지 레벨에서 리다이렉트 처리하도록 함
   }

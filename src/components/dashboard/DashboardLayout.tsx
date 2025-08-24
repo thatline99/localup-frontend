@@ -18,11 +18,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   
   const handleLogout = async () => {
     try {
-      console.log("로그아웃 시작");
       
       // 카카오 로그인인 경우 카카오 로그아웃도 함께 처리
       if (session?.user?.provider === 'kakao') {
-        console.log("카카오 로그아웃 처리");
         
         // NextAuth 로그아웃 먼저 실행
         await signOut({ 
@@ -34,13 +32,10 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         try {
           // 카카오 SDK가 로드되어 있는 경우 카카오 로그아웃 실행
           if (typeof window !== 'undefined' && (window as any).Kakao) {
-            console.log("카카오 SDK로 로그아웃 처리");
             (window as any).Kakao.Auth.logout(() => {
-              console.log("카카오 로그아웃 완료");
               router.push('/sign-in');
             });
           } else {
-            console.log("카카오 SDK 없음 - 일반 로그아웃만 처리");
             router.push('/sign-in');
           }
         } catch (error) {

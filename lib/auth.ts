@@ -61,7 +61,6 @@ function validateEmail(email: string): boolean {
 // 사업정보 등록 필요 여부 확인
 async function checkBusinessInfoRequired(cookieHeader: string): Promise<boolean> {
     try {
-        console.log("사업정보 등록 여부 확인 시작");
         
         const response = await fetch(`${process.env.BACKEND_API_URL}/users/business`, {
             method: "GET",
@@ -70,16 +69,11 @@ async function checkBusinessInfoRequired(cookieHeader: string): Promise<boolean>
             }
         });
         
-        console.log(`사업정보 확인 응답 상태: ${response.status}`);
-        
         if (response.status === 404) {
-            console.log("사업정보가 등록되지 않음 - 등록 필요");
             return true; // 사업정보 등록 필요
         } else if (response.status === 200) {
-            console.log("사업정보가 이미 등록됨");
             return false; // 사업정보 등록 불필요
         } else {
-            console.log("사업정보 확인 중 오류 발생 - 안전을 위해 등록 필요로 처리");
             return true; // 안전을 위해 등록 필요로 처리
         }
     } catch (error) {
@@ -98,38 +92,28 @@ async function authenticateUser(email: string, password: string) {
             credentials: 'include' // 쿠키 포함하여 요청
         })
 
-        console.log(`로그인 시도 - 응답 상태: ${response.status}`)
-        console.log(`응답 헤더:`, response.headers)
-        
         // 응답 본문을 한번 읽고 로깅
         const responseText = await response.text()
         // console.log(`응답 본문:`, responseText)
 
         if (response.status === 401){
-            console.log("일치하는 회원이 존재하지 않음")
             throw new InvalidCredentialsError();
         }
 
         if (response.status === 403) {
-            console.log("계정 비활성화")
             throw new AccountDisabledError();
         }
 
         if (!response.ok) {
-            console.log(`서버 오류: ${response.status}`)
             throw new ServerError();
         }
-
-        console.log("로그인 성공 - 응답 처리 시작")
         
         // 응답 본문이 비어있는 경우 (쿠키만 사용하는 백엔드)
         if (!responseText || responseText.trim() === '') {
-            console.log("응답 본문이 비어있음 - 쿠키 기반 인증으로 처리")
             
             // 쿠키에서 accessToken 확인
             const setCookieHeader = response.headers.get('set-cookie');
             if (setCookieHeader && setCookieHeader.includes('accessToken=')) {
-                console.log("accessToken 쿠키 설정됨")
                 
                 // accessToken 추출
                 const accessTokenMatch = setCookieHeader.match(/accessToken=([^;]+)/);
@@ -148,7 +132,6 @@ async function authenticateUser(email: string, password: string) {
                     backendAccessToken: backendAccessToken
                 };
             } else {
-                console.error("accessToken 쿠키가 설정되지 않음")
                 throw new ServerError();
             }
         }
@@ -157,11 +140,9 @@ async function authenticateUser(email: string, password: string) {
         let result;
         try {
             result = JSON.parse(responseText);
-            console.log("로그인 성공 - JSON 파싱 완료:", result)
             return result;
         } catch (parseError) {
             console.error("JSON 파싱 실패:", parseError)
-            console.error("파싱하려던 텍스트:", responseText)
             throw new ServerError();
         }
     }
@@ -174,12 +155,10 @@ async function authenticateUser(email: string, password: string) {
         
         // JSON 파싱 에러일 가능성
         if (err instanceof SyntaxError) {
-            console.error("JSON 파싱 에러 - 서버 응답이 올바른 JSON이 아님")
             throw new ServerError();
         }
         
         // 네트워크 에러는 로깅 후 NetworkError로 변환
-        console.error("기타 네트워크 에러로 분류:", err)
         throw new NetworkError();
     }
 }
@@ -192,16 +171,8 @@ async function authenticateUser(email: string, password: string) {
  */
 async function authKakaoUser(kakaoProfile: any) {
     try {
-        console.log("카카오 사용자 인증 시작:", kakaoProfile);
         
         // 1단계: 카카오 로그인 시도 (기존 회원인 경우 바로 로그인)
-        console.log("백엔드로 전송할 카카오 정보:", {
-            kakaoId: kakaoProfile.id,
-            kakaoIdType: typeof kakaoProfile.id,
-            email: kakaoProfile.email
-        });
-        
-        console.log("=== 1단계: 카카오 로그인 시도 ===");
         const loginResponse = await fetch(`${process.env.BACKEND_API_URL}/auth/kakao/check`, {
             method: "POST",
             headers: { 
@@ -214,24 +185,20 @@ async function authKakaoUser(kakaoProfile: any) {
         });
 
         const loginResponseText = await loginResponse.text();
-        console.log(`카카오 로그인 시도 - 상태: ${loginResponse.status}, 응답: ${loginResponseText}`);
-        console.log("카카오 로그인 응답 전체 헤더들:", Object.fromEntries(loginResponse.headers.entries()));
 
         // 로그인 성공인 경우
         if (loginResponse.status === 200) {
-            console.log("✅ 카카오 로그인 성공 - 기존 회원");
             
             // 1. 응답 본문이 있는 경우 JSON으로 처리
             if (loginResponseText && loginResponseText.trim() !== '') {
                 try {
                     const userInfo = JSON.parse(loginResponseText);
-                    console.log("카카오 로그인 - JSON 응답 처리:", userInfo);
                     return {
                         ...userInfo,
                         isNewUser: false
                     };
                 } catch (parseError) {
-                    console.log("JSON 파싱 실패 - 쿠키 기반 로그인으로 처리");
+                    console.log("JSON 파싱 실패 - 쿠키 기반 로그인으로 처리"+parseError);
                 }
             }
             
@@ -241,10 +208,6 @@ async function authKakaoUser(kakaoProfile: any) {
             const setCookieHeaders = loginResponse.headers.getSetCookie?.() || [];
             const setCookieHeader = loginResponse.headers.get('set-cookie');
             
-            console.log("카카오 로그인 응답 쿠키 헤더 (get):", setCookieHeader);
-            console.log("카카오 로그인 응답 쿠키 헤더들 (getSetCookie):", setCookieHeaders);
-            console.log("쿠키 헤더 타입:", typeof setCookieHeader);
-            
             // 모든 쿠키 헤더에서 accessToken 찾기
             let backendAccessToken = null;
             
@@ -252,33 +215,25 @@ async function authKakaoUser(kakaoProfile: any) {
             if (setCookieHeader && setCookieHeader.includes('accessToken=')) {
                 const accessTokenMatch = setCookieHeader.match(/accessToken=([^;,\s]+)/);
                 backendAccessToken = accessTokenMatch ? accessTokenMatch[1] : null;
-                console.log("로그인 단일 헤더에서 토큰 추출:", backendAccessToken);
             }
             
             // 2. 여러 set-cookie 헤더에서 찾기 (getSetCookie 사용)
             if (!backendAccessToken && setCookieHeaders.length > 0) {
                 for (const cookieHeader of setCookieHeaders) {
-                    console.log("로그인 개별 쿠키 헤더 확인:", cookieHeader);
                     if (cookieHeader.includes('accessToken=')) {
                         const accessTokenMatch = cookieHeader.match(/accessToken=([^;,\s]+)/);
                         backendAccessToken = accessTokenMatch ? accessTokenMatch[1] : null;
-                        console.log("로그인 다중 헤더에서 토큰 추출:", backendAccessToken);
                         break;
                     }
                 }
             }
             
-            console.log("로그인 최종 추출된 백엔드 토큰:", backendAccessToken);
-            
             if (backendAccessToken) {
-                console.log("✅ 카카오 로그인 - accessToken 쿠키 발견됨");
                 
                 // 사업정보 확인을 위한 쿠키 헤더 준비 (모든 쿠키 포함)
                 const cookieHeaderForBusiness = setCookieHeaders.length > 0 ? 
                     setCookieHeaders.join('; ') : 
                     (setCookieHeader || '');
-                
-                console.log("사업정보 확인용 쿠키 헤더:", cookieHeaderForBusiness);
                 
                 // 기존 사용자의 사업정보 등록 여부 확인
                 const needsBusinessInfo = await checkBusinessInfoRequired(cookieHeaderForBusiness);
@@ -293,27 +248,19 @@ async function authKakaoUser(kakaoProfile: any) {
                     needsBusinessInfo: needsBusinessInfo,
                     backendAccessToken: backendAccessToken
                 };
-                console.log("✅ 카카오 기존 사용자 데이터:", userData);
                 return userData;
             } else {
-                console.error("❌ 카카오 로그인 성공했지만 accessToken 쿠키를 찾을 수 없음");
-                console.error("응답 상태:", loginResponse.status);
-                console.error("응답 텍스트:", loginResponseText);
-                console.error("전체 헤더:", Object.fromEntries(loginResponse.headers.entries()));
                 return { error: "KAKAO_LOGIN_TOKEN_NOT_FOUND" };
             }
         }
         
         // 계정 비활성화된 경우 (403)
         if (loginResponse.status === 403) {
-            console.log("❌ 카카오 계정이 비활성화됨");
             return { error: "KAKAO_ACCOUNT_DISABLED" };
         }
 
         // 로그인 실패인 경우 (404, 401 등) - 신규 사용자이므로 회원가입 진행
         if (loginResponse.status === 404 || loginResponse.status === 401) {
-            console.log("=== 2단계: 카카오 회원가입 진행 ===");
-            console.log(`로그인 실패 (${loginResponse.status}) - 신규 사용자로 회원가입 시도`);
             
             const signupResponse = await fetch(`${process.env.BACKEND_API_URL}/auth/kakao/signup`, {
                 method: "POST",
@@ -327,22 +274,18 @@ async function authKakaoUser(kakaoProfile: any) {
             });
 
             const signupResponseText = await signupResponse.text();
-            console.log(`카카오 회원가입 - 상태: ${signupResponse.status}, 응답: ${signupResponseText}`);
 
             if (signupResponse.status === 200 || signupResponse.status === 201) {
-                console.log("✅ 카카오 회원가입 성공 - 신규 사용자");
                 
                 // 1. 응답 본문이 있는 경우 JSON으로 처리
                 if (signupResponseText && signupResponseText.trim() !== '') {
                     try {
                         const signupResult = JSON.parse(signupResponseText);
-                        console.log("카카오 회원가입 - JSON 응답 처리:", signupResult);
                         return {
                             ...signupResult,
                             isNewUser: true
                         };
                     } catch (parseError) {
-                        console.log("회원가입 응답 JSON 파싱 실패 - 쿠키 기반으로 처리");
                     }
                 }
                 
@@ -352,10 +295,6 @@ async function authKakaoUser(kakaoProfile: any) {
                 const setCookieHeaders = signupResponse.headers.getSetCookie?.() || [];
                 const setCookieHeader = signupResponse.headers.get('set-cookie');
                 
-                console.log("카카오 회원가입 응답 쿠키 헤더 (get):", setCookieHeader);
-                console.log("카카오 회원가입 응답 쿠키 헤더들 (getSetCookie):", setCookieHeaders);
-                console.log("회원가입 응답 전체 헤더들:", Object.fromEntries(signupResponse.headers.entries()));
-                
                 // 모든 쿠키 헤더에서 accessToken 찾기
                 let backendAccessToken = null;
                 
@@ -363,27 +302,20 @@ async function authKakaoUser(kakaoProfile: any) {
                 if (setCookieHeader && setCookieHeader.includes('accessToken=')) {
                     const accessTokenMatch = setCookieHeader.match(/accessToken=([^;,\s]+)/);
                     backendAccessToken = accessTokenMatch ? accessTokenMatch[1] : null;
-                    console.log("회원가입 단일 헤더에서 토큰 추출:", backendAccessToken);
                 }
                 
                 // 2. 여러 set-cookie 헤더에서 찾기 (getSetCookie 사용)
                 if (!backendAccessToken && setCookieHeaders.length > 0) {
                     for (const cookieHeader of setCookieHeaders) {
-                        console.log("회원가입 개별 쿠키 헤더 확인:", cookieHeader);
                         if (cookieHeader.includes('accessToken=')) {
                             const accessTokenMatch = cookieHeader.match(/accessToken=([^;,\s]+)/);
                             backendAccessToken = accessTokenMatch ? accessTokenMatch[1] : null;
-                            console.log("회원가입 다중 헤더에서 토큰 추출:", backendAccessToken);
                             break;
                         }
                     }
                 }
                 
-                console.log("회원가입 최종 추출된 백엔드 토큰:", backendAccessToken);
-                
                 if (backendAccessToken) {
-                    console.log("카카오 회원가입 - accessToken 쿠키 발견됨");
-                    
                     const userData = {
                         id: kakaoProfile.id,
                         email: kakaoProfile.email,
@@ -394,23 +326,14 @@ async function authKakaoUser(kakaoProfile: any) {
                         needsBusinessInfo: true, // 신규 사용자는 항상 사업정보 등록 필요
                         backendAccessToken: backendAccessToken
                     };
-                    console.log("카카오 신규 사용자 데이터:", userData);
                     return userData;
                 } else {
-                    console.error("카카오 회원가입 성공했지만 accessToken 쿠키를 찾을 수 없음");
-                    console.error("회원가입 응답 상태:", signupResponse.status);
-                    console.error("회원가입 응답 텍스트:", signupResponseText);
-                    console.error("회원가입 전체 헤더:", Object.fromEntries(signupResponse.headers.entries()));
                     return { error: "KAKAO_SIGNUP_TOKEN_NOT_FOUND" };
                 }
             } else if (signupResponse.status === 409) {
                 // 409 Conflict - 이미 존재하는 사용자 (이메일 중복)
-                console.log("⚠️  카카오 회원가입 409 에러 - 이메일이 이미 존재하는 기존 사용자");
-                console.log("이는 DB에 kakaoId 필드가 없어서 발생하는 문제입니다.");
                 
-                // 임시 해결책: 기존 사용자로 간주하고 로그인 허용
-                console.log("🔧 임시 처리 - 기존 사용자로 간주하여 가짜 토큰으로 로그인 허용");
-                
+                // 기존 사용자로 간주하고 로그인 허용
                 const tempUserData = {
                     id: kakaoProfile.id,
                     email: kakaoProfile.email,
@@ -421,7 +344,6 @@ async function authKakaoUser(kakaoProfile: any) {
                     needsBusinessInfo: false, // 기존 사용자로 가정
                     backendAccessToken: "temp_token_" + Date.now() // 임시 토큰
                 };
-                console.log("✅ 임시 사용자 데이터:", tempUserData);
                 return tempUserData;
             } else {
                 console.error("❌ 카카오 회원가입 실패:", signupResponse.status, signupResponseText);
@@ -478,7 +400,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 password: { label: "비밀번호", type: "password" }
             },
             async authorize(credentials) {
-                console.log("로그인 로직 시작")
                 const {email, password} = credentials as {
                     email: string
                     password: string
@@ -509,7 +430,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     } : null;
                     
                 } catch (error) {
-                    // authenticateUser에서 던진 CustomAuthError를 그대로 전파
+                    // authenticateUser에서 던진 CustomAuthError를 처리
+                    if (error instanceof AuthError) {
+                        console.log('Auth error caught:', error.type, error.message);
+                        // NextAuth는 커스텀 에러 메시지를 잘 전달하지 않으므로 null을 반환하여 로그인 실패 처리
+                        return null;
+                    }
                     throw error;
                 }
             }
@@ -520,9 +446,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
     callbacks: {
         async jwt({token, user, account}) {
-            console.log("=== JWT 콜백 시작 ===");
-            console.log("user:", user);
-            console.log("account:", account);
             
             if(user) {
                 token.id = user.id
@@ -530,8 +453,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 token.provider = user.provider
 
                 if(account?.provider === "kakao"){
-                    console.log("JWT 콜백 - 카카오 사용자 정보 설정")
-                    console.log("user.backendAccessToken:", user.backendAccessToken);
                     
                     // signIn 콜백에서 이미 인증이 완료되었으므로 사용자 정보만 설정
                     token.id = user.id
@@ -541,7 +462,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     // 백엔드 accessToken을 NextAuth 토큰에 저장
                     if (user.backendAccessToken) {
                         token.backendAccessToken = user.backendAccessToken
-                        console.log("백엔드 토큰을 JWT에 저장:", user.backendAccessToken);
                     } else {
                         console.log("백엔드 토큰이 user 객체에 없음");
                     }
@@ -556,7 +476,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     }
                 } else {
                     // 일반 로그인(credentials)의 경우
-                    console.log("JWT 콜백 - 일반 로그인 사용자 정보 설정")
                     token.id = user.id
                     token.role = user.role || "user"
                     token.provider = "credentials"
@@ -577,7 +496,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         async session({session, token}) {
             // 인증 에러가 있는 경우 세션을 반환하지 않음 (자동 로그아웃)
             if(token?.authError) {
-                console.log("인증 에러로 인한 세션 거부:", token.authError)
                 return null; // 세션을 null로 반환하여 로그아웃 상태로 만듦
             }
             
@@ -591,7 +509,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     session.user.backendAccessToken = token.backendAccessToken as string
                 } else if (token.provider === 'kakao') {
                     // 카카오 사용자인데 백엔드 토큰이 없으면 재로그인 필요
-                    console.log("카카오 사용자의 백엔드 토큰이 없음 - 재로그인 필요");
                     session.user.needsReauth = true;
                 }
                 
@@ -607,28 +524,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
 
         async signIn({ user, account, profile }) {
-            console.log("=== signIn 콜백 시작 ===");
-            console.log("user:", user);
-            console.log("account:", account);  
-            console.log("profile:", profile);
             
             // 카카오 로그인 시 실제 백엔드 인증 체크
             if (account?.provider === "kakao") {
-                console.log("signIn 콜백 - 카카오 로그인 체크");
-                console.log("카카오 사용자 정보:", {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name,
-                    image: user.image
-                });
                 
                 try {
-                    console.log("authKakaoUser 함수 호출 시작");
-                    console.log("카카오 계정 정보:", {
-                        "user.id (NextAuth UUID)": user.id,
-                        "account.providerAccountId (실제 카카오 ID)": account.providerAccountId,
-                        "profile.id": profile.id
-                    });
                     
                     const response = await authKakaoUser({
                         id: account.providerAccountId, // 실제 카카오 ID 사용
@@ -636,11 +536,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         name: user.name,
                         image: user.image
                     });
-                    
-                    console.log("authKakaoUser 응답:", response);
-                    console.log("응답 타입:", typeof response);
-                    console.log("응답이 null인지:", response === null);
-                    console.log("응답이 undefined인지:", response === undefined);
                     
                     // 에러 응답인 경우 로그인 차단
                     if (response && response.error) {
@@ -660,7 +555,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         return `/sign-in?error=${errorCode}`;
                     }
                     
-                    console.log("카카오 인증 성공, 로그인 허용");
                     
                     // 사용자 객체에 백엔드 응답 정보 추가
                     if (response && !response.error) {
@@ -669,12 +563,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         user.role = response.role || "user";
                         user.backendAccessToken = response.backendAccessToken;
                         user.needsBusinessInfo = response.needsBusinessInfo;
-                        console.log("user 객체에 백엔드 정보 추가:", {
-                            id: user.id,
-                            isNewUser: user.isNewUser,
-                            backendAccessToken: user.backendAccessToken,
-                            needsBusinessInfo: user.needsBusinessInfo
-                        });
                     }
                     
                     return true;
@@ -689,7 +577,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // 일반 로그인 유저의 경우 사업정보가 없을때의 대처가 없음
             //fix: 일반 로그인 유저에 대하여 처리 로직 추가
             
-            console.log("일반 로그인 허용");
             return true;
         }
     },

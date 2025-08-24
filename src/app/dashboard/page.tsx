@@ -27,7 +27,6 @@ export default function DashboardPage() {
 
       // 재인증이 필요한 경우 로그인 페이지로 리다이렉트
       if (session.user.needsReauth) {
-        console.log('백엔드 토큰 없음 - 재로그인 필요');
         router.replace('/sign-in?message=재로그인이 필요합니다');
         return;
       }
@@ -39,14 +38,12 @@ export default function DashboardPage() {
 
         if (response.status === 401) {
           // 백엔드 토큰 문제 - 재로그인 필요
-          console.log('백엔드 인증 실패 - 재로그인 필요');
           router.replace('/sign-in?message=재로그인이 필요합니다');
           return;
         }
 
         if (response.status === 404) {
           // 사업정보가 없음 - 하지만 방금 등록한 경우일 수 있으니 1번 더 시도
-          console.log('사업정보 없음 - 1초 후 재시도');
           
           setTimeout(async () => {
             try {
@@ -55,10 +52,8 @@ export default function DashboardPage() {
               });
               
               if (retryResponse.status === 404) {
-                console.log('재시도 후에도 사업정보 없음 - business-setup으로 이동');
                 router.replace('/business-setup');
               } else if (retryResponse.ok) {
-                console.log('재시도 후 사업정보 발견 - 대시보드 표시');
                 setIsLoading(false);
               } else {
                 // 다른 오류인 경우 대시보드 표시
