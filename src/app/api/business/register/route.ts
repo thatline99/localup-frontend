@@ -11,7 +11,6 @@ async function registerOrUpdateBusiness(businessData: any, cookies: string) {
     });
 
     const method = checkResponse.status === 200 ? 'PATCH' : 'POST'; // 기존 정보가 있으면 PATCH, 없으면 POST
-    console.log(`사업정보 ${method === 'PATCH' ? '업데이트' : '등록'} 요청`);
 
     const response = await fetch(`${process.env.BACKEND_API_URL}/users/business`, {
         method: method,
@@ -44,7 +43,8 @@ export async function POST(request: NextRequest){
             businessItem,
             businessAverageOrderAmount,
             businessSeatCount,
-            businessCustomerSegments
+            businessCustomerSegments,
+            businessDescription
         } = await request.json()
 
         // 필수 필드 검증
@@ -68,7 +68,8 @@ export async function POST(request: NextRequest){
             businessItem,
             businessAverageOrderAmount,
             businessSeatCount,
-            businessCustomerSegments
+            businessCustomerSegments,
+            businessDescription
         }
 
         // 세션에서 백엔드 토큰 가져오기
@@ -111,7 +112,6 @@ export async function POST(request: NextRequest){
         })
     }
     catch(err){
-        console.error('사업정보 등록 오류:', err)
         
         return NextResponse.json(
             {error: '사업정보 등록 중 오류가 발생했습니다'},

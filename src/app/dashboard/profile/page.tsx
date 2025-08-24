@@ -29,6 +29,7 @@ export default function ProfilePage() {
     averageOrderAmount: '',
     seatCount: '',
     customerSegments: [] as string[],
+    businessDescription: '',
   });
 
   // 사업정보 로드
@@ -66,6 +67,7 @@ export default function ProfilePage() {
             averageOrderAmount: business.averageOrderAmount?.toString() || '',
             seatCount: business.seatCount?.toString() || '',
             customerSegments: business.customerSegments || [],
+            businessDescription: business.description || '',
           });
         }
       } catch (error) {
@@ -202,6 +204,12 @@ export default function ProfilePage() {
                   <label className="block text-sm font-medium text-neutral-700 mb-1">종목</label>
                   <div className="p-3 bg-neutral-50 rounded-lg border">
                     {profileData.businessItem || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">사업체 소개</label>
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    {profileData.businessDescription || '-'}
                   </div>
                 </div>
                 <div>

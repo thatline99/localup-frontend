@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { getSession } from 'next-auth/react';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
 import { BusinessType, CustomerSegment, CustomerSegmentLabels } from '../../../types';
+import AddressSearch from '@/components/AddressSearch';
 
 export default function BusinessSetupPage() {
   const { data: session } = useSession();
@@ -28,6 +29,7 @@ export default function BusinessSetupPage() {
     averagePrice: '',
     capacity: '',
     targetCustomers: [] as CustomerSegment[],
+    businessDescription: '',
   });
 
   const businessTypes = [
@@ -83,6 +85,7 @@ export default function BusinessSetupPage() {
             averagePrice: businessInfo.averageOrderAmount?.toString() || '',
             capacity: businessInfo.seatCount?.toString() || '',
             targetCustomers: businessInfo.customerSegments || [],
+            businessDescription: businessInfo.description || '',
           }));
         }
       } catch (error) {
@@ -113,7 +116,8 @@ export default function BusinessSetupPage() {
         businessItem: formData.businessSubType,
         businessAverageOrderAmount: parseFloat(formData.averagePrice),
         businessSeatCount: parseInt(formData.capacity),
-        businessCustomerSegments: formData.targetCustomers
+        businessCustomerSegments: formData.targetCustomers,
+        businessDescription: formData.businessDescription?.trim() || null
       };
 
       // 수정 모드이므로 PATCH 요청
@@ -132,9 +136,9 @@ export default function BusinessSetupPage() {
         throw new Error(data.error || '사업정보 수정에 실패했습니다.');
       }
 
-      // 성공 시 세션 새로고침 후 대시보드로 이동
+      // 성공 시 세션 새로고침 후 프로필 페이지로 이동
       await getSession();
-      router.push('/dashboard');
+      router.push('/dashboard/profile');
       router.refresh();
     } catch (error) {
       console.error('사업정보 수정 오류:', error);
@@ -226,19 +230,41 @@ export default function BusinessSetupPage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">위치 정보</h3>
               
+              {/* 주소 검색 버튼 */}
+              <div>
+                <label className="label mb-2 block">주소 검색</label>
+                <AddressSearch
+                  onAddressSelect={(addressData) => {
+                    setFormData({
+                      ...formData,
+                      zipCode: addressData.zipCode,
+                      address: addressData.address,
+                      sigunguCode: addressData.sigunguCode,
+                      latitude: addressData.latitude,
+                      longitude: addressData.longitude
+                    });
+                  }}
+                  disabled={loading}
+                />
+              </div>
+
               <Input
                 label="우편번호"
                 value={formData.zipCode}
-                onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                placeholder="12345"
+                onChange={() => {}} // readonly
+                placeholder="주소 검색으로 자동 입력됩니다"
+                readOnly
+                className="bg-gray-50"
                 required
               />
 
               <Input
                 label="업체 주소"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="기본 주소를 입력하세요"
+                onChange={() => {}} // readonly
+                placeholder="주소 검색으로 자동 입력됩니다"
+                readOnly
+                className="bg-gray-50"
                 required
               />
 
@@ -246,20 +272,58 @@ export default function BusinessSetupPage() {
                 label="상세 주소"
                 value={formData.addressDetail}
                 onChange={(e) => setFormData({ ...formData, addressDetail: e.target.value })}
-                placeholder="상세 주소를 입력하세요 (선택)"
+                placeholder="상세 주소를 직접 입력하세요 (선택)"
               />
 
               <Input
                 label="시군구 코드"
                 value={formData.sigunguCode}
-                onChange={(e) => setFormData({ ...formData, sigunguCode: e.target.value })}
-                placeholder="시군구 코드를 입력하세요"
+                onChange={() => {}} // readonly
+                placeholder="주소 검색으로 자동 입력됩니다"
+                readOnly
+                className="bg-gray-50"
                 required
               />
+              
+              {/* 좌표 정보 표시 (숨김 필드) */}
+              {(formData.latitude !== 0 || formData.longitude !== 0) && (
+                <div className={`p-3 rounded-lg ${
+                  formData.latitude === 37.5665 && formData.longitude === 126.9780 
+                    ? 'bg-yellow-50 border border-yellow-200' 
+                    : 'bg-green-50 border border-green-200'
+                }`}>
+                  <p className={`text-sm ${
+                    formData.latitude === 37.5665 && formData.longitude === 126.9780
+                      ? 'text-yellow-800' 
+                      : 'text-green-800'
+                  }`}>
+                    🗺️ 좌표 정보: 위도 {formData.latitude.toFixed(6)}, 경도 {formData.longitude.toFixed(6)}
+                    {formData.latitude === 37.5665 && formData.longitude === 126.9780 && (
+                      <span className="block text-yellow-700 mt-1">
+                        ⚠️ 기본 좌표가 사용되었습니다. 카카오 개발자 콘솔에서 '로컬(지도/로컬)' 서비스를 활성화하면 정확한 좌표를 받을 수 있습니다.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">운영 정보</h3>
+              
+              <div>
+                <label className="label mb-2 block">사업체 소개</label>
+                <textarea
+                  className="input min-h-[80px] resize-none"
+                  value={formData.businessDescription}
+                  onChange={(e) => setFormData({ ...formData, businessDescription: e.target.value })}
+                  placeholder="사업체에 대한 간략한 소개를 입력해주세요 (선택사항)"
+                  rows={3}
+                />
+                <p className="text-xs text-neutral-500 mt-1">
+                  고객에게 표시될 사업체 소개글입니다
+                </p>
+              </div>
               
               <Input
                 label="평균 객단가"

@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 // 사업정보 업데이트
 async function updateBusinessInfo(businessData: any, accessToken: string) {
-    console.log('=== updateBusinessInfo 함수 시작 ===');
-    console.log('업데이트할 데이터:', businessData);
     
     try {
         const response = await fetch(`${process.env.BACKEND_API_URL}/users/business`, {
@@ -16,7 +14,6 @@ async function updateBusinessInfo(businessData: any, accessToken: string) {
             body: JSON.stringify(businessData)
         });
 
-        console.log('백엔드 응답 상태:', response.status);
 
         if (!response.ok) {
             const responseText = await response.text();
@@ -40,7 +37,6 @@ async function updateBusinessInfo(businessData: any, accessToken: string) {
         }
 
         const result = await response.json();
-        console.log('사업정보 수정 성공:', result);
         return result;
     } catch (error) {
         console.error('updateBusinessInfo 에러:', error);
@@ -49,7 +45,6 @@ async function updateBusinessInfo(businessData: any, accessToken: string) {
 }
 
 export async function PATCH(request: NextRequest) {
-    console.log('=== /api/business/update PATCH 호출됨 ===');
     
     try {
         const {
@@ -64,7 +59,8 @@ export async function PATCH(request: NextRequest) {
             businessItem,
             businessAverageOrderAmount,
             businessSeatCount,
-            businessCustomerSegments
+            businessCustomerSegments,
+            businessDescription
         } = await request.json();
 
         // 필수 필드 검증
@@ -88,7 +84,8 @@ export async function PATCH(request: NextRequest) {
             businessItem,
             businessAverageOrderAmount,
             businessSeatCount,
-            businessCustomerSegments
+            businessCustomerSegments,
+            businessDescription
         };
 
         // 세션에서 백엔드 토큰 가져오기
