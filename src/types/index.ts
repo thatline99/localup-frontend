@@ -22,11 +22,29 @@ export interface BusinessInfo {
 }
 
 export enum BusinessType {
-  RESTAURANT = 'restaurant',
-  ACCOMMODATION = 'accommodation',
-  RETAIL = 'retail',
-  EXPERIENCE = 'experience',
+  RESTAURANT = 'RESTAURANT',
+  ACCOMMODATION = 'ACCOMMODATION',
+  RETAIL = 'RETAIL',
+  EXPERIENCE = 'EXPERIENCE',
 }
+
+export enum CustomerSegment {
+  FAMILY = 'FAMILY',
+  COUPLE = 'COUPLE',
+  BUSINESS = 'BUSINESS',
+  GROUP = 'GROUP',
+  SOLO_TRAVELER = 'SOLO_TRAVELER',
+  FOREIGN_TOURIST = 'FOREIGN_TOURIST',
+}
+
+export const CustomerSegmentLabels: Record<CustomerSegment, string> = {
+  [CustomerSegment.FAMILY]: '가족 단위',
+  [CustomerSegment.COUPLE]: '커플/연인',
+  [CustomerSegment.BUSINESS]: '비즈니스',
+  [CustomerSegment.GROUP]: '단체/모임',
+  [CustomerSegment.SOLO_TRAVELER]: '1인 여행객',
+  [CustomerSegment.FOREIGN_TOURIST]: '외국인 관광객',
+};
 
 export interface OperatingHours {
   [key: string]: {

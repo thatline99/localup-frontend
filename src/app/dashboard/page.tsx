@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { WeatherWidget } from '@/components/dashboard/WeatherWidget';
 import { EventsWidget } from '@/components/dashboard/EventsWidget';
@@ -10,6 +13,84 @@ import { AIRecommendations } from '@/components/dashboard/AIRecommendations';
 import { PageLayout } from '@/components/dashboard/PageLayout';
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 사업정보 존재 여부 확인
+  useEffect(() => {
+    const checkBusinessInfo = async () => {
+      if (!session?.user) {
+        setIsLoading(false);
+        return;
+      }
+
+      // 재인증이 필요한 경우 로그인 페이지로 리다이렉트
+      if ((session.user as { needsReauth?: boolean }).needsReauth) {
+        router.replace('/sign-in?message=재로그인이 필요합니다');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/business/get', {
+          credentials: 'include'
+        });
+
+        if (response.status === 401) {
+          // 백엔드 토큰 문제 - 재로그인 필요
+          router.replace('/sign-in?message=재로그인이 필요합니다');
+          return;
+        }
+
+        if (response.status === 404) {
+          // 사업정보가 없음 - 하지만 방금 등록한 경우일 수 있으니 1번 더 시도
+          
+          setTimeout(async () => {
+            try {
+              const retryResponse = await fetch('/api/business/get', {
+                credentials: 'include'
+              });
+              
+              if (retryResponse.status === 404) {
+                router.replace('/business-setup');
+              } else if (retryResponse.ok) {
+                setIsLoading(false);
+              } else {
+                // 다른 오류인 경우 대시보드 표시
+                setIsLoading(false);
+              }
+            } catch (error) {
+              console.error('사업정보 재시도 오류:', error);
+              setIsLoading(false);
+            }
+          }, 1000);
+          
+          return;
+        }
+
+        // 사업정보가 있거나 다른 오류인 경우 대시보드 표시
+        setIsLoading(false);
+      } catch (error) {
+        console.error('사업정보 확인 오류:', error);
+        setIsLoading(false);
+      }
+    };
+
+    checkBusinessInfo();
+  }, [session?.user, router]);
+
+  if (isLoading) {
+    return (
+      <PageLayout title="대시보드" description="로딩 중...">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+            <p className="mt-4 text-neutral-600">대시보드를 불러오는 중...</p>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
   return (
     <PageLayout
       title="대시보드"

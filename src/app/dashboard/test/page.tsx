@@ -110,13 +110,13 @@ export default function DashboardPage() {
     if (dashboardData && mapInstanceRef.current) {
       createMarkers(mapInstanceRef.current);
     }
-  }, [dashboardData, selectedCategory, selectedSubCategory]);
+  }, [dashboardData, selectedCategory, selectedSubCategory, createMarkers]);
 
   useEffect(() => {
     if (dashboardData && eventMapInstanceRef.current) {
       createEventMarkers(eventMapInstanceRef.current);
     }
-  }, [dashboardData, selectedEvent]);
+  }, [dashboardData, selectedEvent, createEventMarkers]);
 
   // 평균값 애니메이션 효과
   useEffect(() => {

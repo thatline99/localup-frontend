@@ -1,25 +1,84 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge } from '@/components/ui';
 import { PageLayout } from '@/components/dashboard/PageLayout';
 
 export default function ProfilePage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [businessInfo, setBusinessInfo] = useState<Record<string, unknown> | null>(null);
+  
   const [profileData, setProfileData] = useState({
-    name: '김민수',
-    email: 'minsu.kim@example.com',
-    phone: '010-1234-5678',
+    name: '',
+    email: '',
+    phone: '',
     position: '대표',
-    businessName: '해운대 씨푸드',
-    businessType: '해산물 전문점',
-    registrationNumber: '123-45-67890',
-    address: '부산광역시 해운대구 해운대해변로 123',
-    operatingHours: {
-      weekday: '11:00 - 02:00',
-      weekend: '11:00 - 03:00',
-    },
+    businessName: '',
+    businessType: '',
+    businessItem: '',
+    registrationNumber: '',
+    address: '',
+    addressDetail: '',
+    sigunguCode: '',
+    zipCode: '',
+    averageOrderAmount: '',
+    seatCount: '',
+    customerSegments: [] as string[],
+    businessDescription: '',
   });
+
+  // 사업정보 로드
+  useEffect(() => {
+    const loadBusinessInfo = async () => {
+      if (!session?.user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/business/get', {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const business = data.data.data;
+          setBusinessInfo(business);
+          
+          // 프로필 데이터에 사업정보 반영
+          setProfileData({
+            name: session.user.name || '',
+            email: session.user.email || '',
+            phone: '',
+            position: '대표',
+            businessName: business.name || '',
+            businessType: business.type || '',
+            businessItem: business.item || '',
+            registrationNumber: '',
+            address: business.address || '',
+            addressDetail: business.addressDetail || '',
+            sigunguCode: business.sigunguCode || '',
+            zipCode: business.zipCode || '',
+            averageOrderAmount: business.averageOrderAmount?.toString() || '',
+            seatCount: business.seatCount?.toString() || '',
+            customerSegments: business.customerSegments || [],
+            businessDescription: business.description || '',
+          });
+        }
+      } catch (error) {
+        console.error('사업정보 로드 오류:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBusinessInfo();
+  }, [session]);
 
   const stats = [
     { label: '가입일', value: '2024년 1월 15일' },
@@ -110,35 +169,101 @@ export default function ProfilePage() {
         {/* 업체 정보 */}
         <Card>
           <CardHeader>
-            <CardTitle>업체 정보</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>업체 정보</CardTitle>
+              <Button
+                variant="outline"
+                onClick={() => router.push('/dashboard/business-setup')}
+                disabled={loading}
+              >
+                정보 수정
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4">
-              <Input
-                label="업체명"
-                value={profileData.businessName}
-                onChange={(e) => setProfileData({ ...profileData, businessName: e.target.value })}
-                disabled={!isEditing}
-              />
-              <Input
-                label="업종"
-                value={profileData.businessType}
-                onChange={(e) => setProfileData({ ...profileData, businessType: e.target.value })}
-                disabled={!isEditing}
-              />
-              <Input
-                label="사업자등록번호"
-                value={profileData.registrationNumber}
-                onChange={(e) => setProfileData({ ...profileData, registrationNumber: e.target.value })}
-                disabled={!isEditing}
-              />
-              <Input
-                label="주소"
-                value={profileData.address}
-                onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-                disabled={!isEditing}
-              />
-            </form>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <p className="ml-3 text-neutral-600">업체 정보 로딩 중...</p>
+              </div>
+            ) : businessInfo ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">업체명</label>
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    {profileData.businessName || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">업종</label>
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    {profileData.businessType || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">종목</label>
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    {profileData.businessItem || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">사업체 소개</label>
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    {profileData.businessDescription || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">주소</label>
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    {profileData.address || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">상세주소</label>
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    {profileData.addressDetail || '-'}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">평균 주문금액</label>
+                    <div className="p-3 bg-neutral-50 rounded-lg border">
+                      {profileData.averageOrderAmount ? `${Number(profileData.averageOrderAmount).toLocaleString()}원` : '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">좌석 수</label>
+                    <div className="p-3 bg-neutral-50 rounded-lg border">
+                      {profileData.seatCount ? `${profileData.seatCount}석` : '-'}
+                    </div>
+                  </div>
+                </div>
+                {profileData.customerSegments && profileData.customerSegments.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">고객층</label>
+                    <div className="p-3 bg-neutral-50 rounded-lg border">
+                      <div className="flex flex-wrap gap-2">
+                        {profileData.customerSegments.map((segment, index) => (
+                          <Badge key={index} variant="outline">
+                            {segment}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-neutral-500">업체 정보가 등록되지 않았습니다.</p>
+                <Button
+                  className="mt-4"
+                  onClick={() => router.push('/business-setup')}
+                >
+                  업체 정보 등록
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
