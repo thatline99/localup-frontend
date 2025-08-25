@@ -41,7 +41,7 @@ export async function getDashboardTest(): Promise<
 
 export async function getShortTermForecast(): Promise<GetShortTermForecastResponse> {
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/dashboard/test/short-term-forecast`,
+    `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/dashboard/short-term-forecast`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -66,7 +66,7 @@ export async function getVisitorStatistics(
   });
   
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/test/visitor-statistics?${params}`,
+    `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/dashboard/visitor-statistics?${params}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },

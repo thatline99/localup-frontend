@@ -2,15 +2,19 @@
 
 import { useEffect, useState, useRef } from "react";
 import {
-  getDashboardTest,
+  getDashboard,
   getShortTermForecast,
+  getVisitorStatistics,
 } from "@/app/lib/api/dashboard/dashboard";
 import {
   GetDashboardInformationResponse,
   LocationEvent,
   TouristAttractionRanking,
-  VisitorStatistics,
 } from "@/types/dashboard/getDashboardInformationResponse";
+import {
+  VisitorStatistic,
+  VisitorStatisticsInformation,
+} from "@/types/dashboard/getVisitorStatisticsResponse";
 import {
   GetShortTermForecastResponse,
   ShortTermForecast,
@@ -29,6 +33,8 @@ declare global {
 export default function DashboardPage() {
   const [dashboardData, setDashboardData] =
     useState<GetDashboardInformationResponse | null>(null);
+  const [visitorStatisticsData, setVisitorStatisticsData] =
+    useState<VisitorStatisticsInformation | null>(null);
   const [weatherData, setWeatherData] =
     useState<GetShortTermForecastResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,14 +72,30 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dashboardResponse, weatherResponse] = await Promise.all([
-          getDashboardTest(),
+        // 작년 동기 일주일 날짜 계산
+        const today = new Date();
+        const lastYear = new Date(today);
+        lastYear.setFullYear(today.getFullYear() - 1);
+        
+        // 일주일 전부터 오늘까지
+        const startDate = new Date(lastYear);
+        startDate.setDate(lastYear.getDate() - 6);
+        
+        const formatDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
+        const [dashboardResponse, weatherResponse, visitorResponse] = await Promise.all([
+          getDashboard(),
           getShortTermForecast(),
+          getVisitorStatistics(formatDate(startDate), formatDate(lastYear)),
         ]);
 
         if (dashboardResponse.code === "SUCCESS" && dashboardResponse.data) {
           console.log("Dashboard data:", dashboardResponse.data);
-          console.log("Visitor stats:", dashboardResponse.data.lastYearSameWeekVisitorStatisticsInformation);
           setDashboardData(dashboardResponse.data);
         } else {
           console.log("Dashboard response error:", dashboardResponse);
@@ -84,6 +106,13 @@ export default function DashboardPage() {
           setWeatherData(weatherResponse);
         } else {
           setError("날씨 데이터를 불러오는데 실패했습니다.");
+        }
+
+        if (visitorResponse.code === "SUCCESS" && visitorResponse.data) {
+          console.log("Visitor stats:", visitorResponse.data);
+          setVisitorStatisticsData(visitorResponse.data);
+        } else {
+          console.log("Visitor response error:", visitorResponse);
         }
       } catch (error) {
         console.error("API 호출 오류:", error);
@@ -242,13 +271,11 @@ export default function DashboardPage() {
   }
 
   function getMaxValue() {
-    if (!dashboardData || !dashboardData.lastYearSameWeekVisitorStatisticsInformation || !dashboardData.lastYearSameWeekVisitorStatisticsInformation.visitorStatistics) {
+    if (!visitorStatisticsData || !visitorStatisticsData.visitorStatistics) {
       return 0;
     }
 
-    const stats =
-      dashboardData.lastYearSameWeekVisitorStatisticsInformation
-        .visitorStatistics;
+    const stats = visitorStatisticsData.visitorStatistics;
     let max = 0;
     stats.forEach((stat) => {
       const total =
@@ -265,13 +292,11 @@ export default function DashboardPage() {
   }
 
   function renderChart() {
-    if (!dashboardData || !dashboardData.lastYearSameWeekVisitorStatisticsInformation || !dashboardData.lastYearSameWeekVisitorStatisticsInformation.visitorStatistics) {
+    if (!visitorStatisticsData || !visitorStatisticsData.visitorStatistics) {
       return null;
     }
 
-    const stats =
-      dashboardData.lastYearSameWeekVisitorStatisticsInformation
-        .visitorStatistics;
+    const stats = visitorStatisticsData.visitorStatistics;
     const maxValue = getMaxValue();
     const height = 150; // 차트 높이
 
@@ -405,7 +430,7 @@ export default function DashboardPage() {
     );
   }
 
-  function showTooltip(e: React.MouseEvent, stat: VisitorStatistics) {
+  function showTooltip(e: React.MouseEvent, stat: VisitorStatistic) {
     const tooltip = document.getElementById("tooltip");
     const tooltipContent = document.getElementById("tooltip-content");
 
@@ -1481,7 +1506,7 @@ export default function DashboardPage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-900">
             작년 동기 방문객 통계
           </h2>
-          {dashboardData && dashboardData.lastYearSameWeekVisitorStatisticsInformation && dashboardData.lastYearSameWeekVisitorStatisticsInformation.visitorStatistics && dashboardData.lastYearSameWeekVisitorStatisticsInformation.visitorStatistics.length > 0 ? (
+          {visitorStatisticsData && visitorStatisticsData.visitorStatistics && visitorStatisticsData.visitorStatistics.length > 0 ? (
           <div className="relative h-64">
             {/* 범례 */}
             <div className="mb-4 flex justify-center gap-4">
@@ -1530,7 +1555,7 @@ export default function DashboardPage() {
               {renderChart()}
 
               {/* X축 라벨 */}
-              {dashboardData && dashboardData.lastYearSameWeekVisitorStatisticsInformation && dashboardData.lastYearSameWeekVisitorStatisticsInformation.visitorStatistics && dashboardData.lastYearSameWeekVisitorStatisticsInformation.visitorStatistics.map(
+              {visitorStatisticsData && visitorStatisticsData.visitorStatistics && visitorStatisticsData.visitorStatistics.map(
                 (stat, index) => {
                   const x = 50 + index * 80;
                   const date = new Date(stat.date);
