@@ -4,13 +4,17 @@ import { useEffect, useState, useRef } from "react";
 import {
   getDashboardTest,
   getShortTermForecast,
+  getVisitorStatistics,
 } from "@/app/lib/api/dashboard/dashboard";
 import {
   GetDashboardInformationResponse,
   LocationEvent,
   TouristAttractionRanking,
-  VisitorStatistics,
 } from "@/types/dashboard/getDashboardInformationResponse";
+import {
+  VisitorStatistic,
+  VisitorStatisticsInformation,
+} from "@/types/dashboard/getVisitorStatisticsResponse";
 import {
   GetShortTermForecastResponse,
   ShortTermForecast,
@@ -31,6 +35,12 @@ export default function DashboardPage() {
     useState<GetDashboardInformationResponse | null>(null);
   const [weatherData, setWeatherData] =
     useState<GetShortTermForecastResponse | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(8);
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [periodType, setPeriodType] = useState<'week' | 'month'>('month');
+  const [yearlyComparison, setYearlyComparison] = useState<{
+    [year: number]: VisitorStatisticsInformation;
+  }>({});
   const [loading, setLoading] = useState(true);
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +54,9 @@ export default function DashboardPage() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
   const [weatherCardExpanded, setWeatherCardExpanded] = useState(true);
+  const [visitorCardExpanded, setVisitorCardExpanded] = useState(true);
+  const [visitorRefreshing, setVisitorRefreshing] = useState(false);
+  const [visitorDataLoading, setVisitorDataLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -105,6 +118,69 @@ export default function DashboardPage() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+
+  // 연도별 비교 데이터 가져오기
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const fetchYearlyComparison = async () => {
+      setVisitorDataLoading(true);
+      try {
+        const currentYear = new Date().getFullYear() - 1; // 작년 기준
+        const years = [currentYear, currentYear - 1, currentYear - 2]; // 최근 3년
+        
+        const promises = years.map(async (year) => {
+          let startDate: string;
+          let endDate: string;
+          
+          if (periodType === 'month') {
+            const month = String(selectedMonth).padStart(2, '0');
+            const lastDay = new Date(year, selectedMonth, 0).getDate();
+            startDate = `${year}-${month}-01`;
+            endDate = `${year}-${month}-${lastDay}`;
+          } else {
+            // 주 단위 계산
+            const month = selectedMonth;
+            const firstDayOfMonth = new Date(year, month - 1, 1);
+            const startOfWeek = new Date(firstDayOfMonth);
+            startOfWeek.setDate(firstDayOfMonth.getDate() + (selectedWeek - 1) * 7);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            
+            // 월 마지막 날짜를 넘지 않도록 조정
+            const lastDayOfMonth = new Date(year, month, 0);
+            if (endOfWeek > lastDayOfMonth) {
+              endOfWeek.setTime(lastDayOfMonth.getTime());
+            }
+            
+            startDate = `${year}-${String(month).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+            endDate = `${year}-${String(month).padStart(2, '0')}-${String(endOfWeek.getDate()).padStart(2, '0')}`;
+          }
+          
+          const response = await getVisitorStatistics(startDate, endDate);
+          return { year, data: response.data };
+        });
+        
+        const results = await Promise.all(promises);
+        const comparisonData: { [year: number]: VisitorStatisticsInformation } = {};
+        
+        results.forEach(({ year, data }) => {
+          if (data) {
+            comparisonData[year] = data;
+          }
+        });
+        
+        setYearlyComparison(comparisonData);
+      } catch (error) {
+        console.error("연도별 비교 데이터 로드 실패:", error);
+      } finally {
+        setVisitorDataLoading(false);
+      }
+    };
+
+    fetchYearlyComparison();
+  }, [mounted, selectedMonth, selectedWeek, periodType]);
 
   useEffect(() => {
     if (dashboardData && mapInstanceRef.current) {
@@ -235,194 +311,6 @@ export default function DashboardPage() {
     setSelectedCategory("");
     setSelectedSubCategory("");
     setSelectedAttraction(null);
-  }
-
-  function getMaxValue() {
-    if (!dashboardData) return 0;
-
-    const stats =
-      dashboardData.lastYearSameWeekVisitorStatisticsInformation
-        .visitorStatistics;
-    let max = 0;
-    stats.forEach((stat) => {
-      const total =
-        stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors;
-      max = Math.max(
-        max,
-        stat.localVisitors,
-        stat.domesticVisitors,
-        stat.foreignVisitors,
-        total,
-      );
-    });
-    return max;
-  }
-
-  function renderChart() {
-    if (!dashboardData) return null;
-
-    const stats =
-      dashboardData.lastYearSameWeekVisitorStatisticsInformation
-        .visitorStatistics;
-    const maxValue = getMaxValue();
-    const height = 150; // 차트 높이
-
-    // 각 라인의 포인트들을 생성
-    const localPoints = stats
-      .map((stat, index) => {
-        const x = 50 + index * 80;
-        const y = height - (stat.localVisitors / maxValue) * height + 20;
-        return `${x},${y}`;
-      })
-      .join(" ");
-
-    const domesticPoints = stats
-      .map((stat, index) => {
-        const x = 50 + index * 80;
-        const y = height - (stat.domesticVisitors / maxValue) * height + 20;
-        return `${x},${y}`;
-      })
-      .join(" ");
-
-    const foreignPoints = stats
-      .map((stat, index) => {
-        const x = 50 + index * 80;
-        const y = height - (stat.foreignVisitors / maxValue) * height + 20;
-        return `${x},${y}`;
-      })
-      .join(" ");
-
-    const totalPoints = stats
-      .map((stat, index) => {
-        const x = 50 + index * 80;
-        const total =
-          stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors;
-        const y = height - (total / maxValue) * height + 20;
-        return `${x},${y}`;
-      })
-      .join(" ");
-
-    return (
-      <g>
-        {/* 지역 방문객 라인 */}
-        <polyline
-          points={localPoints}
-          fill="none"
-          stroke="#3B82F6"
-          strokeWidth="2"
-        />
-        {/* 국내 방문객 라인 */}
-        <polyline
-          points={domesticPoints}
-          fill="none"
-          stroke="#10B981"
-          strokeWidth="2"
-        />
-        {/* 해외 방문객 라인 */}
-        <polyline
-          points={foreignPoints}
-          fill="none"
-          stroke="#8B5CF6"
-          strokeWidth="2"
-        />
-        {/* 총 방문객 라인 */}
-        <polyline
-          points={totalPoints}
-          fill="none"
-          stroke="#F97316"
-          strokeWidth="3"
-          strokeDasharray="5,5"
-        />
-
-        {/* 데이터 포인트 점들 */}
-        {stats.map((stat, index) => {
-          const x = 50 + index * 80;
-          const localY = height - (stat.localVisitors / maxValue) * height + 20;
-          const domesticY =
-            height - (stat.domesticVisitors / maxValue) * height + 20;
-          const foreignY =
-            height - (stat.foreignVisitors / maxValue) * height + 20;
-          const total =
-            stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors;
-          const totalY = height - (total / maxValue) * height + 20;
-
-          return (
-            <g key={index}>
-              <circle
-                cx={x}
-                cy={localY}
-                r="4"
-                fill="#3B82F6"
-                className="hover:r-6 cursor-pointer"
-              />
-              <circle
-                cx={x}
-                cy={domesticY}
-                r="4"
-                fill="#10B981"
-                className="hover:r-6 cursor-pointer"
-              />
-              <circle
-                cx={x}
-                cy={foreignY}
-                r="4"
-                fill="#8B5CF6"
-                className="hover:r-6 cursor-pointer"
-              />
-              <circle
-                cx={x}
-                cy={totalY}
-                r="5"
-                fill="#F97316"
-                stroke="#fff"
-                strokeWidth="2"
-                className="hover:r-7 cursor-pointer"
-              />
-
-              {/* 투명한 호버 영역 */}
-              <rect
-                x={x - 15}
-                y="0"
-                width="30"
-                height={height + 20}
-                fill="transparent"
-                className="cursor-pointer"
-                onMouseEnter={(e) => showTooltip(e, stat)}
-                onMouseLeave={hideTooltip}
-              />
-            </g>
-          );
-        })}
-      </g>
-    );
-  }
-
-  function showTooltip(e: React.MouseEvent, stat: VisitorStatistics) {
-    const tooltip = document.getElementById("tooltip");
-    const tooltipContent = document.getElementById("tooltip-content");
-
-    if (tooltip && tooltipContent) {
-      const date = new Date(stat.date);
-      const total =
-        stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors;
-      tooltipContent.innerHTML = `
-        <div><strong>${date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" })}</strong></div>
-        <div>지역: ${stat.localVisitors.toLocaleString()}</div>
-        <div>국내: ${stat.domesticVisitors.toLocaleString()}</div>
-        <div>해외: ${stat.foreignVisitors.toLocaleString()}</div>
-        <div style="border-top: 1px solid #374151; padding-top: 4px; margin-top: 4px;"><strong>총합: ${total.toLocaleString()}</strong></div>
-      `;
-      tooltip.classList.remove("opacity-0");
-      tooltip.classList.add("opacity-100");
-    }
-  }
-
-  function hideTooltip() {
-    const tooltip = document.getElementById("tooltip");
-    if (tooltip) {
-      tooltip.classList.remove("opacity-100");
-      tooltip.classList.add("opacity-0");
-    }
   }
 
   const getWeatherIcon = (condition: string) => {
@@ -1003,9 +891,10 @@ export default function DashboardPage() {
 
   const renderTemperatureChart = (hourlyData: HourlyShortTermForecast[]) => {
     // 모바일에서는 3시간 간격 데이터만 사용 (mounted 후에만 적용)
-    const filteredData = mounted && isMobile
-      ? hourlyData.filter((_, index) => index % 3 === 0)
-      : hourlyData;
+    const filteredData =
+      mounted && isMobile
+        ? hourlyData.filter((_, index) => index % 3 === 0)
+        : hourlyData;
 
     const maxTemp = Math.max(...filteredData.map((h) => h.temperature || 0));
     const minTemp = Math.min(...filteredData.map((h) => h.temperature || 0));
@@ -1468,89 +1357,478 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* 첫 번째 행 - 방문객 통계 */}
-        <div className="rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            작년 동기 방문객 통계
-          </h2>
-          <div className="relative h-64">
-            {/* 범례 */}
-            <div className="mb-4 flex justify-center gap-4">
+        {/* 방문자 분석 카드 */}
+        <div className="rounded-lg bg-white shadow lg:col-span-2">
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {periodType === 'week'
+                  ? `${selectedMonth}월 ${selectedWeek}주차 연도별 방문자 비교 (2018-${new Date().getFullYear() - 1})`
+                  : `${selectedMonth}월 연도별 방문자 비교 (2018-${new Date().getFullYear() - 1})`
+                }
+              </h2>
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-                <span className="text-sm text-gray-600">지역 방문객</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                <span className="text-sm text-gray-600">국내 방문객</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-purple-500"></div>
-                <span className="text-sm text-gray-600">해외 방문객</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-orange-500"></div>
-                <span className="text-sm font-medium text-gray-600">
-                  총 방문객
-                </span>
+                {visitorCardExpanded && (
+                  <>
+                    {/* 기간 타입 선택 */}
+                    <select
+                      value={periodType}
+                      onChange={(e) => setPeriodType(e.target.value as 'week' | 'month')}
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="month">월 단위</option>
+                      <option value="week">주 단위</option>
+                    </select>
+                    
+                    
+                    {/* 월 선택 */}
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => {
+                        setSelectedMonth(Number(e.target.value));
+                        setSelectedWeek(1); // 월 변경 시 첫 주로 리셋
+                      }}
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
+                        <option key={month} value={month}>{month}월</option>
+                      ))}
+                    </select>
+                    
+                    {/* 주 선택 (주 단위일 때만) */}
+                    {periodType === 'week' && (
+                      <select
+                        value={selectedWeek}
+                        onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                        className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        {(() => {
+                          const currentYear = new Date().getFullYear() - 1; // 작년 기준
+                          const lastDay = new Date(currentYear, selectedMonth, 0).getDate();
+                          const maxWeeks = Math.ceil(lastDay / 7);
+                          return Array.from({ length: maxWeeks }, (_, i) => i + 1).map(week => (
+                            <option key={week} value={week}>{week}주차</option>
+                          ));
+                        })()}
+                      </select>
+                    )}
+                    
+                    <span className="text-sm text-gray-500">
+                      3개년 데이터 비교
+                    </span>
+                    <button
+                      onClick={async () => {
+                        setVisitorRefreshing(true);
+                        try {
+                          // 연도별 비교 데이터 새로고침
+                            const currentYear = new Date().getFullYear() - 1; // 작년 기준
+                            const years = [currentYear, currentYear - 1, currentYear - 2]; // 최근 3년
+                            
+                            const promises = years.map(async (year) => {
+                              let startDate: string;
+                              let endDate: string;
+                              
+                              if (periodType === 'month') {
+                                const month = String(selectedMonth).padStart(2, '0');
+                                const lastDay = new Date(year, selectedMonth, 0).getDate();
+                                startDate = `${year}-${month}-01`;
+                                endDate = `${year}-${month}-${lastDay}`;
+                              } else {
+                                // 주 단위 계산
+                                const month = selectedMonth;
+                                const firstDayOfMonth = new Date(year, month - 1, 1);
+                                const startOfWeek = new Date(firstDayOfMonth);
+                                startOfWeek.setDate(firstDayOfMonth.getDate() + (selectedWeek - 1) * 7);
+                                const endOfWeek = new Date(startOfWeek);
+                                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                                
+                                // 월 마지막 날짜를 넘지 않도록 조정
+                                const lastDayOfMonth = new Date(year, month, 0);
+                                if (endOfWeek > lastDayOfMonth) {
+                                  endOfWeek.setTime(lastDayOfMonth.getTime());
+                                }
+                                
+                                startDate = `${year}-${String(month).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+                                endDate = `${year}-${String(month).padStart(2, '0')}-${String(endOfWeek.getDate()).padStart(2, '0')}`;
+                              }
+                              
+                              const response = await getVisitorStatistics(startDate, endDate);
+                              return { year, data: response.data };
+                            });
+                            
+                            const results = await Promise.all(promises);
+                            const comparisonData: { [year: number]: VisitorStatisticsInformation } = {};
+                            
+                            results.forEach(({ year, data }) => {
+                              if (data) {
+                                comparisonData[year] = data;
+                              }
+                            });
+                            
+                            setYearlyComparison(comparisonData);
+                        } catch (error) {
+                          console.error("방문자 데이터 새로고침 실패:", error);
+                        } finally {
+                          setVisitorRefreshing(false);
+                        }
+                      }}
+                      disabled={visitorRefreshing}
+                      className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      title="방문자 정보 새로고침"
+                    >
+                      <svg
+                        className={`h-5 w-5 ${visitorRefreshing ? 'animate-spin' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setVisitorCardExpanded(!visitorCardExpanded)}
+                  className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  title={visitorCardExpanded ? "접기" : "펼치기"}
+                >
+                  <svg
+                    className={`h-5 w-5 transition-transform duration-200 ${visitorCardExpanded ? '' : 'rotate-180'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 15l7-7 7 7"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
 
-            {/* 차트 SVG */}
-            <svg className="h-48 w-full" viewBox="0 0 600 200">
-              {/* 배경 그리드 */}
-              <defs>
-                <pattern
-                  id="grid"
-                  width="60"
-                  height="40"
-                  patternUnits="userSpaceOnUse"
+            {/* 방문자 내용 - 카드가 펼쳐졌을 때만 표시 */}
+            {visitorCardExpanded && (
+              <>
+                {(visitorRefreshing || visitorDataLoading) ? (
+                  <div className="mt-4 animate-pulse">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="rounded-lg bg-gray-200 p-4">
+                          <div className="mb-2 h-4 w-20 rounded bg-gray-300"></div>
+                          <div className="h-8 w-24 rounded bg-gray-300"></div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 h-64 rounded bg-gray-200"></div>
+                  </div>
+                ) : Object.keys(yearlyComparison).length > 0 ? (
+                  // 연도별 비교 차트
+                  <div className="mt-4 space-y-4">
+                    {/* 연도별 총 방문자 비교 */}
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="rounded-lg bg-gray-50 p-4">
+                        <div className="text-sm text-gray-600">최고 방문자 연도</div>
+                        <div className="mt-1">
+                          {(() => {
+                            const yearTotals = Object.entries(yearlyComparison).map(([year, data]) => ({
+                              year: Number(year),
+                              total: data.visitorStatistics.reduce(
+                                (sum, stat) => sum + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
+                                0
+                              )
+                            }));
+                            const maxYear = yearTotals.reduce((max, curr) => 
+                              curr.total > max.total ? curr : max
+                            );
+                            return (
+                              <>
+                                <div className="text-2xl font-bold text-gray-900">{maxYear.year}년</div>
+                                <div className="text-sm text-gray-500">{maxYear.total.toLocaleString()}명</div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-4">
+                        <div className="text-sm text-gray-600">평균 방문자</div>
+                        <div className="mt-1">
+                          <div className="text-2xl font-bold text-gray-900">
+                            {Math.round(
+                              Object.values(yearlyComparison).reduce(
+                                (sum, data) => sum + data.visitorStatistics.reduce(
+                                  (s, stat) => s + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
+                                  0
+                                ),
+                                0
+                              ) / Object.keys(yearlyComparison).length
+                            ).toLocaleString()}명
+                          </div>
+                          <div className="text-sm text-gray-500">7개년 평균</div>
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-4">
+                        <div className="text-sm text-gray-600">전년 대비 증감</div>
+                        <div className="mt-1">
+                          {(() => {
+                            const lastYear = new Date().getFullYear() - 1;
+                            const currLastYear = yearlyComparison[lastYear]?.visitorStatistics.reduce(
+                              (sum, stat) => sum + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
+                              0
+                            ) || 0;
+                            const currPrevYear = yearlyComparison[lastYear - 1]?.visitorStatistics.reduce(
+                              (sum, stat) => sum + stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors,
+                              0
+                            ) || 0;
+                            const diff = currLastYear - currPrevYear;
+                            const percent = currPrevYear > 0 ? ((diff / currPrevYear) * 100).toFixed(1) : 0;
+                            return (
+                              <>
+                                <div className={`text-2xl font-bold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {diff >= 0 ? '+' : ''}{percent}%
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {diff >= 0 ? '▲' : '▼'} {Math.abs(diff).toLocaleString()}명
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 연도별 비교 라인 차트 */}
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[800px]">
+                        <svg className="h-80 w-full" viewBox="0 0 900 340">
+                          {/* 배경 */}
+                          <rect x="60" y="40" width="790" height="240" fill="#fafafa" rx="4" />
+                          
+                          {/* Y축 그리드 라인 */}
+                          {[0, 1, 2, 3, 4, 5].map((i) => (
+                            <g key={i}>
+                              <line
+                                x1="60"
+                                y1={280 - i * 48}
+                                x2="850"
+                                y2={280 - i * 48}
+                                stroke="#e5e7eb"
+                                strokeWidth="1"
+                              />
+                              {/* Y축 값 라벨 */}
+                              <text
+                                x="50"
+                                y={285 - i * 48}
+                                textAnchor="end"
+                                className="fill-gray-600 text-xs"
+                              >
+                                {(() => {
+                                  const maxValue = Math.max(
+                                    ...Object.values(yearlyComparison).flatMap(d => 
+                                      d.visitorStatistics.map(s => 
+                                        s.localVisitors + s.domesticVisitors + s.foreignVisitors
+                                      )
+                                    )
+                                  );
+                                  return Math.round((maxValue / 5) * i).toLocaleString();
+                                })()}
+                              </text>
+                            </g>
+                          ))}
+                          
+                          {/* X축 그리드 라인 (주요 날짜) */}
+                          {[1, 5, 10, 15, 20, 25, 30].map((day) => (
+                            <line
+                              key={day}
+                              x1={60 + ((day - 1) * 780 / 29)}
+                              y1="280"
+                              x2={60 + ((day - 1) * 780 / 29)}
+                              y2="40"
+                              stroke="#f3f4f6"
+                              strokeWidth="1"
+                            />
+                          ))}
+                          
+                          {/* 연도별 라인 차트 */}
+                          {Object.entries(yearlyComparison)
+                            .sort(([a], [b]) => Number(b) - Number(a))
+                            .map(([year, data], yearIndex) => {
+                            const colors = ['#2563EB', '#059669', '#7C3AED'];
+                            const color = colors[yearIndex % colors.length];
+                            
+                            // 일별 합계 계산
+                            const dailyTotals = data.visitorStatistics.map(stat => 
+                              stat.localVisitors + stat.domesticVisitors + stat.foreignVisitors
+                            );
+                            
+                            // 최대값 계산
+                            const maxValue = Math.max(
+                              ...Object.values(yearlyComparison).flatMap(d => 
+                                d.visitorStatistics.map(s => 
+                                  s.localVisitors + s.domesticVisitors + s.foreignVisitors
+                                )
+                              )
+                            );
+                            
+                            const points = dailyTotals.map((total, index) => {
+                              const x = 60 + (index * 780 / (dailyTotals.length - 1));
+                              const y = 280 - (total / maxValue) * 240;
+                              return { x, y, value: total };
+                            });
+                            
+                            const pointsString = points.map(p => `${p.x},${p.y}`).join(' ');
+                            
+                            return (
+                              <g key={year}>
+                                {/* 라인 그림자 효과 */}
+                                <polyline
+                                  points={pointsString}
+                                  fill="none"
+                                  stroke={color}
+                                  strokeWidth="4"
+                                  opacity="0.2"
+                                />
+                                {/* 메인 라인 */}
+                                <polyline
+                                  points={pointsString}
+                                  fill="none"
+                                  stroke={color}
+                                  strokeWidth="3"
+                                />
+                                {/* 데이터 포인트 (5일 간격) */}
+                                {points.filter((_, i) => i % 5 === 0 || i === points.length - 1).map((point, i) => (
+                                  <g key={i}>
+                                    <circle
+                                      cx={point.x}
+                                      cy={point.y}
+                                      r="4"
+                                      fill="white"
+                                      stroke={color}
+                                      strokeWidth="2"
+                                    />
+                                    {/* 호버 영역 */}
+                                    <circle
+                                      cx={point.x}
+                                      cy={point.y}
+                                      r="8"
+                                      fill="transparent"
+                                      className="cursor-pointer"
+                                    >
+                                      <title>{`${year}년: ${point.value.toLocaleString()}명`}</title>
+                                    </circle>
+                                  </g>
+                                ))}
+                              </g>
+                            );
+                          })}
+                          
+                          {/* 범례 */}
+                          <g>
+                            {Object.entries(yearlyComparison)
+                              .sort(([a], [b]) => Number(b) - Number(a))
+                              .map(([year], yearIndex) => {
+                              const colors = ['#2563EB', '#059669', '#7C3AED'];
+                              const color = colors[yearIndex % colors.length];
+                              const x = 350 + yearIndex * 70;
+                              const y = 15;
+                              
+                              return (
+                                <g key={year}>
+                                  <rect
+                                    x={x}
+                                    y={y - 8}
+                                    width="30"
+                                    height="3"
+                                    fill={color}
+                                    rx="1"
+                                  />
+                                  <text
+                                    x={x + 35}
+                                    y={y}
+                                    className="fill-gray-700 text-xs font-medium"
+                                  >
+                                    {year}
+                                  </text>
+                                </g>
+                              );
+                            })}
+                          </g>
+                          
+                          {/* X축 라벨 (날짜) */}
+                          {[1, 5, 10, 15, 20, 25, 30].map((day) => (
+                            <text
+                              key={day}
+                              x={60 + ((day - 1) * 780 / 29)}
+                              y={305}
+                              textAnchor="middle"
+                              className="fill-gray-600 text-xs font-medium"
+                            >
+                              {day}일
+                            </text>
+                          ))}
+                          
+                          {/* Y축 라벨 */}
+                          <text
+                            x="30"
+                            y="25"
+                            textAnchor="middle"
+                            className="fill-gray-700 text-xs font-semibold"
+                          >
+                            방문자
+                          </text>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // 데이터 로딩 중
+                  <div className="mt-4 animate-pulse space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="rounded-lg bg-gray-200 p-4">
+                          <div className="mb-2 h-4 w-20 rounded bg-gray-300"></div>
+                          <div className="h-8 w-24 rounded bg-gray-300"></div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="h-80 rounded bg-gray-200"></div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Footer - API 제공 정보 */}
+          {visitorCardExpanded && (
+            <div className="px-6 py-3">
+              <div className="flex items-center justify-end text-xs text-gray-500">
+                <svg
+                  className="mr-1 h-3 w-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
                   <path
-                    d="M 60 0 L 0 0 0 40"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="1"
-                    strokeDasharray="3,3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-
-              {/* 데이터 라인 */}
-              {renderChart()}
-
-              {/* X축 라벨 */}
-              {dashboardData.lastYearSameWeekVisitorStatisticsInformation.visitorStatistics.map(
-                (stat, index) => {
-                  const x = 50 + index * 80;
-                  const date = new Date(stat.date);
-                  return (
-                    <text
-                      key={index}
-                      x={x}
-                      y={190}
-                      textAnchor="middle"
-                      className="fill-gray-600 text-xs"
-                    >
-                      {date.getMonth() + 1}/{date.getDate()}
-                    </text>
-                  );
-                },
-              )}
-            </svg>
-
-            {/* 호버 툴팁 */}
-            <div
-              className="pointer-events-none absolute bottom-2 left-2 rounded bg-gray-800 p-2 text-xs text-white opacity-0 transition-opacity"
-              id="tooltip"
-            >
-              <div id="tooltip-content"></div>
+                </svg>
+                <span>데이터 제공: 한국관광공사</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* 두 번째 행 - 관광지 랭킹 (2칸 차지) */}
+        {/* 관광지 랭킹 (2칸 차지) */}
         <div className="rounded-lg bg-white p-6 shadow lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">
