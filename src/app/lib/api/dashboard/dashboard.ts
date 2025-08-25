@@ -5,7 +5,7 @@ import { GetShortTermForecastResponse } from "@/types/dashboard/getShortTermFore
 export async function getDashboard(): Promise<
   BaseResponse<GetDashboardInformationResponse>
 > {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/dashboard`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -23,7 +23,7 @@ export async function getDashboardTest(): Promise<
   BaseResponse<GetDashboardInformationResponse>
 > {
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/test`,
+    `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/dashboard/test`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -40,7 +40,7 @@ export async function getDashboardTest(): Promise<
 
 export async function getShortTermForecast(): Promise<GetShortTermForecastResponse> {
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/test/short-term-forecast`,
+    `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/dashboard/test/short-term-forecast`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
