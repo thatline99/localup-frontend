@@ -76,29 +76,28 @@ export default function DashboardPage() {
         const today = new Date();
         const lastYear = new Date(today);
         lastYear.setFullYear(today.getFullYear() - 1);
-        
+
         // 일주일 전부터 오늘까지
         const startDate = new Date(lastYear);
         startDate.setDate(lastYear.getDate() - 6);
-        
+
         const formatDate = (date: Date) => {
           const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
           return `${year}-${month}-${day}`;
         };
 
-        const [dashboardResponse, weatherResponse, visitorResponse] = await Promise.all([
-          getDashboard(),
-          getShortTermForecast(),
-          getVisitorStatistics(formatDate(startDate), formatDate(lastYear)),
-        ]);
+        const [dashboardResponse, weatherResponse, visitorResponse] =
+          await Promise.all([
+            getDashboard(),
+            getShortTermForecast(),
+            getVisitorStatistics(formatDate(startDate), formatDate(lastYear)),
+          ]);
 
         if (dashboardResponse.code === "SUCCESS" && dashboardResponse.data) {
-          console.log("Dashboard data:", dashboardResponse.data);
           setDashboardData(dashboardResponse.data);
         } else {
-          console.log("Dashboard response error:", dashboardResponse);
           setError("대시보드 데이터를 불러오는데 실패했습니다.");
         }
 
@@ -109,13 +108,9 @@ export default function DashboardPage() {
         }
 
         if (visitorResponse.code === "SUCCESS" && visitorResponse.data) {
-          console.log("Visitor stats:", visitorResponse.data);
           setVisitorStatisticsData(visitorResponse.data);
-        } else {
-          console.log("Visitor response error:", visitorResponse);
         }
       } catch (error) {
-        console.error("API 호출 오류:", error);
         setError("API 호출 중 오류가 발생했습니다.");
       } finally {
         setLoading(false);
@@ -223,7 +218,11 @@ export default function DashboardPage() {
   }, [weatherData, selectedWeatherTab]);
 
   function getUniqueCategories(): string[] {
-    if (!dashboardData?.lastMonthlyTouristAttractionRankingInformation?.lastMonthlyTouristAttractionRankingList) return [];
+    if (
+      !dashboardData?.lastMonthlyTouristAttractionRankingInformation
+        ?.lastMonthlyTouristAttractionRankingList
+    )
+      return [];
     const categories = new Set(
       dashboardData.lastMonthlyTouristAttractionRankingInformation.lastMonthlyTouristAttractionRankingList.map(
         (attraction) => attraction.category,
@@ -233,7 +232,12 @@ export default function DashboardPage() {
   }
 
   function getUniqueSubCategories(): string[] {
-    if (!dashboardData?.lastMonthlyTouristAttractionRankingInformation?.lastMonthlyTouristAttractionRankingList || !selectedCategory) return [];
+    if (
+      !dashboardData?.lastMonthlyTouristAttractionRankingInformation
+        ?.lastMonthlyTouristAttractionRankingList ||
+      !selectedCategory
+    )
+      return [];
     const subCategories = new Set(
       dashboardData.lastMonthlyTouristAttractionRankingInformation.lastMonthlyTouristAttractionRankingList
         .filter((attraction) => attraction.category === selectedCategory)
@@ -243,7 +247,11 @@ export default function DashboardPage() {
   }
 
   function getFilteredAttractions(): TouristAttractionRanking[] {
-    if (!dashboardData?.lastMonthlyTouristAttractionRankingInformation?.lastMonthlyTouristAttractionRankingList) return [];
+    if (
+      !dashboardData?.lastMonthlyTouristAttractionRankingInformation
+        ?.lastMonthlyTouristAttractionRankingList
+    )
+      return [];
 
     let filtered =
       dashboardData.lastMonthlyTouristAttractionRankingInformation
@@ -1036,9 +1044,10 @@ export default function DashboardPage() {
 
   const renderTemperatureChart = (hourlyData: HourlyShortTermForecast[]) => {
     // 모바일에서는 3시간 간격 데이터만 사용 (mounted 후에만 적용)
-    const filteredData = mounted && isMobile
-      ? hourlyData.filter((_, index) => index % 3 === 0)
-      : hourlyData;
+    const filteredData =
+      mounted && isMobile
+        ? hourlyData.filter((_, index) => index % 3 === 0)
+        : hourlyData;
 
     const maxTemp = Math.max(...filteredData.map((h) => h.temperature || 0));
     const minTemp = Math.min(...filteredData.map((h) => h.temperature || 0));
@@ -1506,89 +1515,103 @@ export default function DashboardPage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-900">
             작년 동기 방문객 통계
           </h2>
-          {visitorStatisticsData && visitorStatisticsData.visitorStatistics && visitorStatisticsData.visitorStatistics.length > 0 ? (
-          <div className="relative h-64">
-            {/* 범례 */}
-            <div className="mb-4 flex justify-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-                <span className="text-sm text-gray-600">지역 방문객</span>
+          {visitorStatisticsData &&
+          visitorStatisticsData.visitorStatistics &&
+          visitorStatisticsData.visitorStatistics.length > 0 ? (
+            <div className="relative h-64">
+              {/* 범례 */}
+              <div className="mb-4 flex justify-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                  <span className="text-sm text-gray-600">지역 방문객</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                  <span className="text-sm text-gray-600">국내 방문객</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-purple-500"></div>
+                  <span className="text-sm text-gray-600">해외 방문객</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-orange-500"></div>
+                  <span className="text-sm font-medium text-gray-600">
+                    총 방문객
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                <span className="text-sm text-gray-600">국내 방문객</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-purple-500"></div>
-                <span className="text-sm text-gray-600">해외 방문객</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-orange-500"></div>
-                <span className="text-sm font-medium text-gray-600">
-                  총 방문객
-                </span>
+
+              {/* 차트 SVG */}
+              <svg className="h-48 w-full" viewBox="0 0 600 200">
+                {/* 배경 그리드 */}
+                <defs>
+                  <pattern
+                    id="grid"
+                    width="60"
+                    height="40"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <path
+                      d="M 60 0 L 0 0 0 40"
+                      fill="none"
+                      stroke="#e5e7eb"
+                      strokeWidth="1"
+                      strokeDasharray="3,3"
+                    />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+
+                {/* 데이터 라인 */}
+                {renderChart()}
+
+                {/* X축 라벨 */}
+                {visitorStatisticsData &&
+                  visitorStatisticsData.visitorStatistics &&
+                  visitorStatisticsData.visitorStatistics.map((stat, index) => {
+                    const x = 50 + index * 80;
+                    const date = new Date(stat.date);
+                    return (
+                      <text
+                        key={index}
+                        x={x}
+                        y={190}
+                        textAnchor="middle"
+                        className="fill-gray-600 text-xs"
+                      >
+                        {date.getMonth() + 1}/{date.getDate()}
+                      </text>
+                    );
+                  })}
+              </svg>
+
+              {/* 호버 툴팁 */}
+              <div
+                className="pointer-events-none absolute bottom-2 left-2 rounded bg-gray-800 p-2 text-xs text-white opacity-0 transition-opacity"
+                id="tooltip"
+              >
+                <div id="tooltip-content"></div>
               </div>
             </div>
-
-            {/* 차트 SVG */}
-            <svg className="h-48 w-full" viewBox="0 0 600 200">
-              {/* 배경 그리드 */}
-              <defs>
-                <pattern
-                  id="grid"
-                  width="60"
-                  height="40"
-                  patternUnits="userSpaceOnUse"
+          ) : (
+            <div className="flex h-64 items-center justify-center text-gray-500">
+              <div className="text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
                   <path
-                    d="M 60 0 L 0 0 0 40"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="1"
-                    strokeDasharray="3,3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                   />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-
-              {/* 데이터 라인 */}
-              {renderChart()}
-
-              {/* X축 라벨 */}
-              {visitorStatisticsData && visitorStatisticsData.visitorStatistics && visitorStatisticsData.visitorStatistics.map(
-                (stat, index) => {
-                  const x = 50 + index * 80;
-                  const date = new Date(stat.date);
-                  return (
-                    <text
-                      key={index}
-                      x={x}
-                      y={190}
-                      textAnchor="middle"
-                      className="fill-gray-600 text-xs"
-                    >
-                      {date.getMonth() + 1}/{date.getDate()}
-                    </text>
-                  );
-                },
-              )}
-            </svg>
-
-            {/* 호버 툴팁 */}
-            <div
-              className="pointer-events-none absolute bottom-2 left-2 rounded bg-gray-800 p-2 text-xs text-white opacity-0 transition-opacity"
-              id="tooltip"
-            >
-              <div id="tooltip-content"></div>
-            </div>
-          </div>
-          ) : (
-            <div className="flex items-center justify-center h-64 text-gray-500">
-              <div className="text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <p className="mt-2 text-sm">방문객 통계 데이터를 불러올 수 없습니다</p>
+                <p className="mt-2 text-sm">
+                  방문객 통계 데이터를 불러올 수 없습니다
+                </p>
               </div>
             </div>
           )}
@@ -1659,14 +1682,14 @@ export default function DashboardPage() {
             {/* 왼쪽: 랭킹 리스트 */}
             <div className="w-1/2">
               <div className="h-full space-y-2 overflow-y-auto pr-4">
-                {getFilteredAttractions().map((attraction) => {
+                {getFilteredAttractions().map((attraction, index) => {
                   const originalIndex =
                     dashboardData?.lastMonthlyTouristAttractionRankingInformation?.lastMonthlyTouristAttractionRankingList?.findIndex(
                       (item) => item.rank === attraction.rank,
                     ) ?? -1;
                   return (
                     <div
-                      key={attraction.rank}
+                      key={`${attraction.rank}-${attraction.name}-${index}`}
                       className={`flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors ${
                         selectedAttraction === originalIndex
                           ? "border-2 border-primary-300 bg-primary-100"
@@ -1859,50 +1882,53 @@ export default function DashboardPage() {
                 <div ref={eventMapRef} className="h-full w-full"></div>
 
                 {/* 선택된 이벤트 정보 오버레이 */}
-                {selectedEvent !== null && dashboardData?.ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation?.sigunguEvents?.[selectedEvent] && (
-                  <div className="absolute bottom-4 left-4 right-4 rounded-lg border bg-white p-3 shadow-lg">
-                    <div className="flex items-start gap-3">
-                      <img
-                        src={
-                          dashboardData
-                            .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
-                            .sigunguEvents[selectedEvent].thumbnailImageUrl
-                        }
-                        alt={
-                          dashboardData
-                            .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
-                            .sigunguEvents[selectedEvent].title
-                        }
-                        className="h-12 w-12 rounded object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h4 className="line-clamp-1 text-sm font-medium text-gray-900">
-                          {
+                {selectedEvent !== null &&
+                  dashboardData
+                    ?.ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
+                    ?.sigunguEvents?.[selectedEvent] && (
+                    <div className="absolute bottom-4 left-4 right-4 rounded-lg border bg-white p-3 shadow-lg">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={
+                            dashboardData
+                              .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
+                              .sigunguEvents[selectedEvent].thumbnailImageUrl
+                          }
+                          alt={
                             dashboardData
                               .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
                               .sigunguEvents[selectedEvent].title
                           }
-                        </h4>
-                        <p className="mt-1 text-xs text-gray-600">
-                          {
-                            dashboardData
-                              .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
-                              .sigunguEvents[selectedEvent].startDate
-                          }{" "}
-                          ~{" "}
-                          {
-                            dashboardData
-                              .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
-                              .sigunguEvents[selectedEvent].endDate
-                          }
-                        </p>
+                          className="h-12 w-12 rounded object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="line-clamp-1 text-sm font-medium text-gray-900">
+                            {
+                              dashboardData
+                                .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
+                                .sigunguEvents[selectedEvent].title
+                            }
+                          </h4>
+                          <p className="mt-1 text-xs text-gray-600">
+                            {
+                              dashboardData
+                                .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
+                                .sigunguEvents[selectedEvent].startDate
+                            }{" "}
+                            ~{" "}
+                            {
+                              dashboardData
+                                .ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
+                                .sigunguEvents[selectedEvent].endDate
+                            }
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </div>
@@ -2018,7 +2044,12 @@ export default function DashboardPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function createEventMarkers(map: any) {
-    if (!dashboardData?.ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation?.sigunguEvents) return;
+    if (
+      !dashboardData
+        ?.ongoingOrUpComingSigunguEventsFromTodayToMonthEndInformation
+        ?.sigunguEvents
+    )
+      return;
 
     // 기존 마커 제거
     eventMarkersRef.current.forEach((marker) => marker.setMap(null));
