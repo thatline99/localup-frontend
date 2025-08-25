@@ -1,4 +1,4 @@
-import NextAuth, { CredentialsSignin, AuthError } from "next-auth";
+import NextAuth, { AuthError } from "next-auth";
 import Kakao from "next-auth/providers/kakao";
 import Credentials from "next-auth/providers/credentials";
 
@@ -6,49 +6,42 @@ import Credentials from "next-auth/providers/credentials";
 class InvalidCredentialsError extends AuthError {
   constructor() {
     super("이메일 또는 비밀번호가 일치하지 않습니다.");
-    this.type = "INVALID_CREDENTIALS";
   }
 }
 
 class AccountDisabledError extends AuthError {
   constructor() {
     super("이메일 인증이 완료되지 않았습니다.");
-    this.type = "ACCOUNT_DISABLED";
   }
 }
 
 class ServerError extends AuthError {
   constructor() {
     super("서버 오류가 발생했습니다.");
-    this.type = "SERVER_ERROR";
   }
 }
 
 class NetworkError extends AuthError {
   constructor() {
     super("네트워크 오류가 발생했습니다.");
-    this.type = "NETWORK_ERROR";
   }
 }
 
 class MissingCredentialsError extends AuthError {
   constructor() {
     super("이메일과 비밀번호를 입력해주세요.");
-    this.type = "MISSING_CREDENTIALS";
   }
 }
 
 class InvalidEmailError extends AuthError {
   constructor() {
     super("올바른 이메일 형식이 아닙니다.");
-    this.type = "INVALID_EMAIL";
   }
 }
 
 class PasswordTooShortError extends AuthError {
   constructor() {
     super("비밀번호는 6자 이상이어야 합니다.");
-    this.type = "PASSWORD_TOO_SHORT";
   }
 }
 
@@ -130,7 +123,7 @@ async function authenticateUser(email: string, password: string) {
                     role: "user",
                     needsBusinessInfo: needsBusinessInfo,
                     backendAccessToken: backendAccessToken
-                };
+                } as { id: string; email: string; name: string; role: string; needsBusinessInfo: boolean; backendAccessToken: string | null };
             } else {
                 throw new ServerError();
             }
@@ -169,7 +162,12 @@ async function authenticateUser(email: string, password: string) {
  * 2. 신규 회원인 경우 자동 회원가입
  * 3. 로그인 처리
  */
-async function authKakaoUser(kakaoProfile: any) {
+async function authKakaoUser(kakaoProfile: {
+    id: string;
+    email: string;
+    name: string;
+    image?: string | null;
+}) {
     try {
         
         // 1단계: 카카오 로그인 시도 (기존 회원인 경우 바로 로그인)
@@ -197,8 +195,8 @@ async function authKakaoUser(kakaoProfile: any) {
                         ...userInfo,
                         isNewUser: false
                     };
-                } catch (parseError) {
-                    console.log("JSON 파싱 실패 - 쿠키 기반 로그인으로 처리"+parseError);
+                } catch {
+                    console.log("JSON 파싱 실패 - 쿠키 기반 로그인으로 처리");
                 }
             }
             
@@ -285,7 +283,7 @@ async function authKakaoUser(kakaoProfile: any) {
                             ...signupResult,
                             isNewUser: true
                         };
-                    } catch (parseError) {
+                    } catch {
                     }
                 }
                 
@@ -363,21 +361,6 @@ async function authKakaoUser(kakaoProfile: any) {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-    logger: {
-        error: (code, ...message) => {
-            // 정상적인 401 응답은 에러로 로깅하지 않음
-            if (code !== 'JWT_SESSION_ERROR' && code !== 'SESSION_ERROR') {
-                console.error(code, ...message)
-            }
-        },
-        warn: (code, ...message) => {
-            // 세션 관련 경고는 무시
-            if (code !== 'JWT_SESSION_ERROR' && code !== 'SESSION_ERROR') {
-                console.warn(code, ...message)
-            }
-        },
-        debug: () => {}, // debug 로그 비활성화
-    },
     providers: [
         Kakao({
             clientId: process.env.AUTH_KAKAO_ID!,
@@ -460,19 +443,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     token.provider = "kakao"
                     
                     // 백엔드 accessToken을 NextAuth 토큰에 저장
-                    if (user.backendAccessToken) {
-                        token.backendAccessToken = user.backendAccessToken
+                    if ((user as { backendAccessToken?: string }).backendAccessToken) {
+                        token.backendAccessToken = (user as { backendAccessToken?: string }).backendAccessToken
                     } else {
                         console.log("백엔드 토큰이 user 객체에 없음");
                     }
                     
                     // 신규 사용자 여부를 user 객체에서 가져오기
-                    if (user.isNewUser !== undefined) {
-                        token.isNewUser = user.isNewUser
-                        token.needsBusinessInfo = user.needsBusinessInfo || user.isNewUser // 신규 사용자이거나 사업정보가 없는 경우
+                    if ((user as { isNewUser?: boolean }).isNewUser !== undefined) {
+                        token.isNewUser = (user as { isNewUser?: boolean }).isNewUser
+                        token.needsBusinessInfo = (user as { needsBusinessInfo?: boolean }).needsBusinessInfo || (user as { isNewUser?: boolean }).isNewUser // 신규 사용자이거나 사업정보가 없는 경우
                     } else {
                         token.isNewUser = false
-                        token.needsBusinessInfo = user.needsBusinessInfo || false
+                        token.needsBusinessInfo = (user as { needsBusinessInfo?: boolean }).needsBusinessInfo || false
                     }
                 } else {
                     // 일반 로그인(credentials)의 경우
@@ -480,11 +463,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     token.role = user.role || "user"
                     token.provider = "credentials"
                     token.isNewUser = false
-                    token.needsBusinessInfo = user.needsBusinessInfo || false
+                    token.needsBusinessInfo = (user as { needsBusinessInfo?: boolean }).needsBusinessInfo || false
                     
                     // 백엔드 accessToken을 NextAuth 토큰에 저장
-                    if (user.backendAccessToken) {
-                        token.backendAccessToken = user.backendAccessToken
+                    if ((user as { backendAccessToken?: string }).backendAccessToken) {
+                        token.backendAccessToken = (user as { backendAccessToken?: string }).backendAccessToken
                     }
                 }
             }
@@ -493,9 +476,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return token
         },
 
+        // @ts-expect-error - NextAuth 타입 이슈 우회
         async session({session, token}) {
             // 인증 에러가 있는 경우 세션을 반환하지 않음 (자동 로그아웃)
-            if(token?.authError) {
+            if((token as { authError?: string })?.authError) {
                 return null; // 세션을 null로 반환하여 로그아웃 상태로 만듦
             }
             
@@ -506,24 +490,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 
                 // 백엔드 토큰을 세션에 추가
                 if(token.backendAccessToken) {
-                    session.user.backendAccessToken = token.backendAccessToken as string
+                    (session.user as { backendAccessToken?: string }).backendAccessToken = token.backendAccessToken as string
                 } else if (token.provider === 'kakao') {
                     // 카카오 사용자인데 백엔드 토큰이 없으면 재로그인 필요
-                    session.user.needsReauth = true;
+                    (session.user as { needsReauth?: boolean }).needsReauth = true;
                 }
                 
                 // 사업정보 입력 필요 여부를 세션에 추가
                 if(token.needsBusinessInfo !== undefined) {
-                    session.user.needsBusinessInfo = token.needsBusinessInfo as boolean
+                    (session.user as { needsBusinessInfo?: boolean }).needsBusinessInfo = token.needsBusinessInfo as boolean
                 }
                 if(token.isNewUser !== undefined) {
-                    session.user.isNewUser = token.isNewUser as boolean
+                    (session.user as { isNewUser?: boolean }).isNewUser = token.isNewUser as boolean
                 }
             }
             return session
         },
 
-        async signIn({ user, account, profile }) {
+        async signIn({ user, account }) {
             
             // 카카오 로그인 시 실제 백엔드 인증 체크
             if (account?.provider === "kakao") {
@@ -532,8 +516,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     
                     const response = await authKakaoUser({
                         id: account.providerAccountId, // 실제 카카오 ID 사용
-                        email: user.email,
-                        name: user.name,
+                        email: user.email || '',
+                        name: user.name || '',
                         image: user.image
                     });
                     
@@ -559,10 +543,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     // 사용자 객체에 백엔드 응답 정보 추가
                     if (response && !response.error) {
                         user.id = account.providerAccountId; // 실제 카카오 ID로 설정
-                        user.isNewUser = response.isNewUser;
+                        (user as { isNewUser?: boolean }).isNewUser = response.isNewUser;
                         user.role = response.role || "user";
-                        user.backendAccessToken = response.backendAccessToken;
-                        user.needsBusinessInfo = response.needsBusinessInfo;
+                        (user as { backendAccessToken?: string }).backendAccessToken = response.backendAccessToken;
+                        (user as { needsBusinessInfo?: boolean }).needsBusinessInfo = response.needsBusinessInfo;
                     }
                     
                     return true;

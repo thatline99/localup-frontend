@@ -106,11 +106,11 @@ export async function GET(request: NextRequest) {
             success: true,
             data: businessInfo
         });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('사업정보 조회 오류:', err);
         
         // 403 권한 에러는 적절한 상태코드로 응답
-        if (err.name === 'FORBIDDEN') {
+        if (err instanceof Error && err.name === 'FORBIDDEN') {
             return NextResponse.json(
                 { error: err.message },
                 { status: 403 }

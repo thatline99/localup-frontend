@@ -11,7 +11,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [businessInfo, setBusinessInfo] = useState<any>(null);
+  const [businessInfo, setBusinessInfo] = useState<Record<string, unknown> | null>(null);
   
   const [profileData, setProfileData] = useState({
     name: '',

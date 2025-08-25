@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { signIn, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent, useToast } from '@/components/ui';
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast, ToastContainer } = useToast();
@@ -103,7 +103,7 @@ export default function SignInPage() {
         // NextAuth 로그인 실패
         setError('로그인 처리 중 오류가 발생했습니다.');
       }
-    } catch (error) {
+    } catch {
       setError('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
     } finally {
       setLoading(false);
@@ -231,5 +231,13 @@ export default function SignInPage() {
       </div>
       </div>
     </>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInContent />
+    </Suspense>
   );
 }

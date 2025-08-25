@@ -13,7 +13,7 @@ export default auth((req) => {
 
   // JWT 토큰에서 에러 정보 확인 (req.auth가 있지만 세션이 null인 경우)
   if (req.auth && !isLoggedIn) {
-    const token = req.auth as any;
+    const token = req.auth as { authError?: string };
     if (token.authError) {
       const redirectUrl = new URL('/sign-in', req.nextUrl);
       redirectUrl.searchParams.set('error', token.authError);

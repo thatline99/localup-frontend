@@ -31,8 +31,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         // 카카오 로그아웃 처리
         try {
           // 카카오 SDK가 로드되어 있는 경우 카카오 로그아웃 실행
-          if (typeof window !== 'undefined' && (window as any).Kakao) {
-            (window as any).Kakao.Auth.logout(() => {
+          if (typeof window !== 'undefined' && (window as { Kakao?: { Auth?: { logout: (callback: () => void) => void } } }).Kakao) {
+            (window as { Kakao?: { Auth?: { logout: (callback: () => void) => void } } }).Kakao?.Auth?.logout(() => {
               router.push('/sign-in');
             });
           } else {

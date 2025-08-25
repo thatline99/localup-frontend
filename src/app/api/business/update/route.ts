@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // 사업정보 업데이트
-async function updateBusinessInfo(businessData: any, accessToken: string) {
+interface BusinessData {
+    businessName: string;
+    businessSigunguCode: string;
+    businessZipCode: string;
+    businessAddress: string;
+    businessAddressDetail?: string;
+    businessLatitude?: number;
+    businessLongitude?: number;
+    businessType: string;
+    businessItem: string;
+    businessAverageOrderAmount?: number;
+    businessSeatCount?: number;
+    businessCustomerSegments?: string[];
+    businessDescription?: string;
+}
+
+async function updateBusinessInfo(businessData: BusinessData, accessToken: string) {
     
     try {
         const response = await fetch(`${process.env.BACKEND_API_URL}/users/business`, {
@@ -23,7 +39,7 @@ async function updateBusinessInfo(businessData: any, accessToken: string) {
                 try {
                     const error = JSON.parse(responseText);
                     throw new Error(error.message || '사업정보 수정에 실패했습니다.');
-                } catch (parseError) {
+                } catch {
                     throw new Error(responseText || '사업정보 수정에 실패했습니다.');
                 }
             } else {
@@ -126,11 +142,11 @@ export async function PATCH(request: NextRequest) {
             message: '사업정보 수정 완료',
             business
         });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('사업정보 수정 오류:', err);
         
         // 403 권한 에러는 적절한 상태코드로 응답
-        if (err.name === 'FORBIDDEN') {
+        if (err instanceof Error && err.name === 'FORBIDDEN') {
             return NextResponse.json(
                 { error: err.message },
                 { status: 403 }

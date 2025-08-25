@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // 사업정보 등록 또는 업데이트
-async function registerOrUpdateBusiness(businessData: any, cookies: string) {
+interface BusinessData {
+    businessName: string;
+    businessSigunguCode: string;
+    businessZipCode: string;
+    businessAddress: string;
+    businessAddressDetail?: string;
+    businessLatitude?: number;
+    businessLongitude?: number;
+    businessType: string;
+    businessItem: string;
+    businessAverageOrderAmount?: number;
+    businessSeatCount?: number;
+    businessCustomerSegments?: string[];
+    businessDescription?: string;
+}
+
+async function registerOrUpdateBusiness(businessData: BusinessData, cookies: string) {
     // 먼저 기존 사업정보가 있는지 확인
     const checkResponse = await fetch(`${process.env.BACKEND_API_URL}/users/business`, {
         method: 'GET',
@@ -111,7 +127,7 @@ export async function POST(request: NextRequest){
             business
         })
     }
-    catch(err){
+    catch{
         
         return NextResponse.json(
             {error: '사업정보 등록 중 오류가 발생했습니다'},

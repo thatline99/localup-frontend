@@ -26,7 +26,7 @@ export default function DashboardPage() {
       }
 
       // 재인증이 필요한 경우 로그인 페이지로 리다이렉트
-      if (session.user.needsReauth) {
+      if ((session.user as { needsReauth?: boolean }).needsReauth) {
         router.replace('/sign-in?message=재로그인이 필요합니다');
         return;
       }

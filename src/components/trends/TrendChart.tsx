@@ -1,10 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
 
-interface TrendChartProps {
-  period: string;
-}
-
-export const TrendChart = ({ period }: TrendChartProps) => {
+export const TrendChart = () => {
   // period prop을 사용하여 데이터 필터링 (실제로는 API 호출 시 사용)
   
   // 모의 데이터

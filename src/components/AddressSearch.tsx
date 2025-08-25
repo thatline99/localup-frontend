@@ -90,7 +90,7 @@ const getCoordinates = async (address: string): Promise<{ latitude: number; long
     );
     
     if (!response.ok) {
-      const errorText = await response.text();
+      await response.text();
       throw new Error(`좌표 변환 실패: ${response.status}`);
     }
     
@@ -105,14 +105,21 @@ const getCoordinates = async (address: string): Promise<{ latitude: number; long
     }
     
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
 
 declare global {
   interface Window {
-    daum: any;
+    daum: {
+      Postcode: new (config: {
+        oncomplete: (data: Record<string, unknown>) => void;
+        width?: string | number;
+        height?: string | number;
+        animation?: boolean;
+      }) => { open: () => void };
+    };
   }
 }
 
@@ -135,7 +142,7 @@ export default function AddressSearch({ onAddressSelect, disabled = false }: Add
     };
   }, []);
 
-  const handleComplete = async (data: any) => {
+  const handleComplete = async (data: Record<string, unknown>) => {
     const { 
       zonecode, 
       roadAddress, 
@@ -143,9 +150,16 @@ export default function AddressSearch({ onAddressSelect, disabled = false }: Add
       sido, 
       sigungu,
       sigunguCode: daumSigunguCode,
-      roadnameCode,
       bcode 
-    } = data;
+    } = data as {
+      zonecode: string;
+      roadAddress: string;
+      jibunAddress: string;
+      sido: string;
+      sigungu: string;
+      sigunguCode: string;
+      bcode: string;
+    };
     
     // 시군구 코드 결정 (Daum API 제공값 우선 사용)
     let finalSigunguCode = '';

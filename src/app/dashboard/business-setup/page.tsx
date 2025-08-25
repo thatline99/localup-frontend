@@ -300,7 +300,7 @@ export default function BusinessSetupPage() {
                     🗺️ 좌표 정보: 위도 {formData.latitude.toFixed(6)}, 경도 {formData.longitude.toFixed(6)}
                     {formData.latitude === 37.5665 && formData.longitude === 126.9780 && (
                       <span className="block text-yellow-700 mt-1">
-                        ⚠️ 기본 좌표가 사용되었습니다. 카카오 개발자 콘솔에서 '로컬(지도/로컬)' 서비스를 활성화하면 정확한 좌표를 받을 수 있습니다.
+                        ⚠️ 기본 좌표가 사용되었습니다. 카카오 개발자 콘솔에서 &apos;로컬(지도/로컬)&apos; 서비스를 활성화하면 정확한 좌표를 받을 수 있습니다.
                       </span>
                     )}
                   </p>
