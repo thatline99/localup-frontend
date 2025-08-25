@@ -4,6 +4,8 @@ import Header from "@/components/Header";
 import {auth} from '@/auth'
 import { redirect } from "next/navigation";
 
+export const runtime = 'edge';
+
 const images = [
   "https://via.placeholder.com/800x200?text=Ad+1",
   "https://via.placeholder.com/800x200?text=Ad+2",

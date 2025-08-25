@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = 'edge';
+
 // 사업정보 업데이트
 interface BusinessData {
     businessName: string;

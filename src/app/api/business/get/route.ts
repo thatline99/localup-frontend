@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = 'edge';
+
 // 기존 사업정보 조회
 async function getBusinessInfo(accessToken: string) {
     
