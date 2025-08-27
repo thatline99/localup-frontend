@@ -20,11 +20,53 @@ function SignInContent() {
   const { showToast, ToastContainer } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [lastLoginInfo, setLastLoginInfo] = useState<any>(null);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     remember: false,
   });
+
+  // localStorage에서 최근 로그인 정보 로드
+  useEffect(() => {
+    const storedLoginInfo = localStorage.getItem('lastLoginInfo');
+    if (storedLoginInfo) {
+      try {
+        const info = JSON.parse(storedLoginInfo);
+        setLastLoginInfo(info);
+        setIsFirstTimeUser(info.isFirstTime || false);
+      } catch (e) {
+        console.error('Failed to parse lastLoginInfo:', e);
+      }
+    } else {
+      setIsFirstTimeUser(true);
+    }
+  }, []);
+  
+  // 이메일 입력 시 최근 로그인 정보 조회
+  const checkLastLoginInfo = async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8080/api"}/auth/last-login?email=${email}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data) {
+          setLastLoginInfo(data.data);
+          setIsFirstTimeUser(data.data.isFirstTime);
+          // localStorage에 저장
+          localStorage.setItem('lastLoginInfo', JSON.stringify(data.data));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch last login info:', error);
+    }
+  };
 
   // URL 파라미터에서 에러 메시지 확인
   useEffect(() => {
@@ -87,10 +129,17 @@ function SignInContent() {
 
       if (directResponse.status === 403) {
         // 403 에러 - 이메일 인증 필요
-        setError("이메일 인증이 완료되지 않았습니다. 인증을 완료해주세요.");
+        const errorData = await directResponse.json();
+        console.log('403 Error Response:', errorData); // 디버깅용
+        if (errorData.code === "EMAIL_NOT_VERIFIED") {
+          setError("이메일 인증을 완료해주세요.");
+        } else {
+          setError("계정이 비활성화되었습니다.");
+        }
         return;
       } else if (directResponse.status === 401) {
         // 401 에러 - 잘못된 자격증명
+        console.log('401 Error - Invalid credentials'); // 디버깅용
         setError("이메일 또는 비밀번호가 일치하지 않습니다.");
         return;
       } else if (!directResponse.ok) {
@@ -107,7 +156,17 @@ function SignInContent() {
       });
 
       if (result?.ok) {
-        // 로그인 성공 - 세션 새로고침 후 리다이렉트
+        // 로그인 성공 - localStorage 업데이트
+        const loginInfo = {
+          email: formData.email,
+          lastLoginMethod: 'EMAIL',
+          lastLoginTime: new Date().toISOString(),
+          deviceType: 'desktop',
+          isFirstTime: false
+        };
+        localStorage.setItem('lastLoginInfo', JSON.stringify(loginInfo));
+        
+        // 세션 새로고침 후 리다이렉트
         await getSession();
         router.push("/dashboard");
         router.refresh();
@@ -131,7 +190,9 @@ function SignInContent() {
             <Link href="/" className="inline-block">
               <h1 className="text-3xl font-bold text-primary-600">LocalUp</h1>
             </Link>
-            <p className="mt-2 text-neutral-600">다시 만나서 반가워요!</p>
+            <p className="mt-2 text-neutral-600">
+              {isFirstTimeUser ? "만나서 반가워요!" : "다시 만나서 반가워요!"}
+            </p>
           </div>
 
           <Card>
@@ -146,28 +207,45 @@ function SignInContent() {
                 </div>
               )}
 
-              <form onSubmit={handleEmailLogin} className="space-y-4">
+              <form onSubmit={handleEmailLogin} noValidate className="space-y-4">
                 <Input
                   label="이메일"
-                  type="email"
+                  type="text"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
+                  onBlur={(e) => checkLastLoginInfo(e.target.value)}
                   placeholder="example@email.com"
-                  required
                 />
 
-                <Input
-                  label="비밀번호"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  placeholder="비밀번호를 입력하세요"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    label="비밀번호"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    placeholder="비밀번호를 입력하세요"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-[34px] text-neutral-500 hover:text-neutral-700"
+                  >
+                    {showPassword ? (
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
 
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2">
@@ -247,7 +325,20 @@ function SignInContent() {
               </svg>
               <span>안전한 로그인</span>
             </div>
-            <p>최근 로그인: 새 기기에서 로그인</p>
+            <p>
+              {lastLoginInfo && !lastLoginInfo.isFirstTime ? (
+                <>
+                  최근 로그인: {lastLoginInfo.lastLoginMethod === 'EMAIL' ? '이메일' : '카카오'} 
+                  {lastLoginInfo.deviceType && ` (${
+                    lastLoginInfo.deviceType === 'mobile' ? '모바일' : 
+                    lastLoginInfo.deviceType === 'tablet' ? '태블릿' : 
+                    '데스크톱'
+                  })`}
+                </>
+              ) : (
+                '최근 로그인: 새 기기에서 로그인'
+              )}
+            </p>
           </div>
         </div>
       </div>
