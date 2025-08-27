@@ -22,7 +22,7 @@ async function getShortTermForecast(accessToken: string) {
         try {
           const error = JSON.parse(responseText);
           throw new Error(error.message || "날씨 정보 조회에 실패했습니다.");
-        } catch (parseError) {
+        } catch {
           throw new Error(responseText || "날씨 정보 조회에 실패했습니다.");
         }
       } else {

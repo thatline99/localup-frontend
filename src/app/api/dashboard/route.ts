@@ -21,7 +21,7 @@ async function getDashboardOverview(accessToken: string) {
           throw new Error(
             error.message || "대시보드 정보 조회에 실패했습니다.",
           );
-        } catch (parseError) {
+        } catch {
           throw new Error(responseText || "대시보드 정보 조회에 실패했습니다.");
         }
       } else {

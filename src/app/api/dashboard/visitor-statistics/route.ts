@@ -31,7 +31,7 @@ async function getVisitorStatistics(
         try {
           const error = JSON.parse(responseText);
           throw new Error(error.message || "방문객 통계 조회에 실패했습니다.");
-        } catch (parseError) {
+        } catch {
           throw new Error(responseText || "방문객 통계 조회에 실패했습니다.");
         }
       } else {

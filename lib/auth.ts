@@ -603,8 +603,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   // 에러를 클라이언트로 전달
   events: {
-    async signIn(message) {},
-    async signOut(message) {},
+    async signIn() {},
+    async signOut() {},
   },
 
   // debug: true // 개발 중에만 활성화

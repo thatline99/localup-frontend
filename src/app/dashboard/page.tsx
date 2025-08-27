@@ -110,7 +110,7 @@ export default function DashboardPage() {
         if (visitorResponse.code === "SUCCESS" && visitorResponse.data) {
           setVisitorStatisticsData(visitorResponse.data);
         }
-      } catch (error) {
+      } catch {
         setError("API 호출 중 오류가 발생했습니다.");
       } finally {
         setLoading(false);
