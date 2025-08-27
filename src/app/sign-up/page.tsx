@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Input, Card, CardHeader, CardContent } from "@/components/ui";
+import { signIn } from "next-auth/react";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -314,6 +315,12 @@ export default function SignUpPage() {
 
               <button
                 type="button"
+                onClick={() => {
+                  signIn("kakao", {
+                    callbackUrl: "/dashboard",
+                    redirect: true,
+                  });
+                }}
                 className="relative h-11 w-full overflow-hidden rounded-lg transition-opacity hover:opacity-90"
                 style={{ backgroundColor: "#FEE500" }}
               >
