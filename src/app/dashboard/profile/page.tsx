@@ -32,31 +32,51 @@ export default function ProfilePage() {
     businessDescription: '',
   });
 
-  // 사업정보 로드
+  // 프로필 및 사업정보 로드
   useEffect(() => {
-    const loadBusinessInfo = async () => {
+    const loadUserData = async () => {
       if (!session?.user) {
         setLoading(false);
         return;
       }
 
       try {
+        // 사용자 프로필 정보 가져오기
+        const profileResponse = await fetch('/api/user/profile', {
+          credentials: 'include'
+        });
+        
+        let userName = session.user.name || '';
+        let userPhone = '';
+        let userPosition = '대표';
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.data) {
+            userName = profileData.data.name || session.user.name || '';
+            userPhone = profileData.data.phoneNumber || '';
+            userPosition = profileData.data.position || '대표';
+          }
+        }
+        
+        // 사업정보 가져오기
         const response = await fetch('/api/business/get', {
           credentials: 'include'
         });
 
         if (response.ok) {
           const data = await response.json();
-          const business = data.data.data;
+          // data.success와 data.data 구조 확인
+          const business = data.success ? data.data : null;
           setBusinessInfo(business);
           
           // 프로필 데이터에 사업정보 반영 (business가 있을 때만)
           if (business) {
             setProfileData({
-              name: session.user.name || '',
+              name: userName,
               email: session.user.email || '',
-              phone: '',
-              position: '대표',
+              phone: userPhone,
+              position: userPosition,
               businessName: business.name || '',
               businessType: business.type || '',
               businessItem: business.item || '',
@@ -70,16 +90,40 @@ export default function ProfilePage() {
               customerSegments: business.customerSegments || [],
               businessDescription: business.description || '',
             });
+          } else {
+            // 사업정보가 없어도 프로필 정보는 설정
+            setProfileData(prev => ({
+              ...prev,
+              name: userName,
+              email: session.user.email || '',
+              phone: userPhone,
+              position: userPosition,
+            }));
           }
+        } else {
+          // API 호출 실패해도 기본 프로필 정보는 설정
+          setProfileData(prev => ({
+            ...prev,
+            name: userName,
+            email: session.user.email || '',
+            phone: userPhone,
+            position: userPosition,
+          }));
         }
       } catch (error) {
-        console.error('사업정보 로드 오류:', error);
+        console.error('사용자 데이터 로드 오류:', error);
+        // 오류 발생해도 기본 정보는 설정
+        setProfileData(prev => ({
+          ...prev,
+          name: session.user.name || '',
+          email: session.user.email || '',
+        }));
       } finally {
         setLoading(false);
       }
     };
 
-    loadBusinessInfo();
+    loadUserData();
   }, [session]);
 
   const stats = [
@@ -102,7 +146,11 @@ export default function ProfilePage() {
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-6">
               <div className="w-24 h-24 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-3xl font-bold">
-                김
+                {profileData.name ? (
+                  profileData.name.match(/^[가-힣]/) ? 
+                    profileData.name.charAt(0) : 
+                    profileData.name.charAt(0).toUpperCase()
+                ) : '?'}
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-neutral-900">{profileData.name}</h2>
