@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -10,12 +10,93 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+interface UserProfileData {
+  name: string;
+  phoneNumber?: string;
+  position?: string;
+  email: string;
+}
+
+interface BusinessData {
+  name: string;
+}
+
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { data: session } = useSession();
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
+  const [businessInfo, setBusinessInfo] = useState<BusinessData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
+  // 사용자 프로필 및 사업정보 로드
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!session?.user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // 프로필 정보 가져오기
+        const profileResponse = await fetch('/api/user/profile', {
+          credentials: 'include'
+        });
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.data) {
+            setUserProfile({
+              name: profileData.data.name || session.user.name || '사용자',
+              phoneNumber: profileData.data.phoneNumber,
+              position: profileData.data.position,
+              email: profileData.data.email || session.user.email || ''
+            });
+          }
+        }
+
+        // 사업정보 가져오기
+        const businessResponse = await fetch('/api/business/get', {
+          credentials: 'include'
+        });
+        
+        if (businessResponse.ok) {
+          const businessData = await businessResponse.json();
+          
+          if (businessData.success && businessData.data && businessData.data.name) {
+            // 데이터가 정상적으로 있는 경우
+            setBusinessInfo({
+              name: businessData.data.name
+            });
+          } else {
+            // 데이터가 없거나 name 필드가 없는 경우
+            setBusinessInfo({
+              name: '사업정보 미등록'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('사용자 정보 로드 오류:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [session]);
+
+  // 사용자 이름의 첫 글자 추출
+  const getInitial = (name: string) => {
+    if (!name) return '?';
+    // 한글인 경우 성씨 추출, 영문인 경우 첫 글자
+    const koreanMatch = name.match(/^[가-힣]/);
+    if (koreanMatch) {
+      return name.charAt(0); // 한글 성씨
+    }
+    return name.charAt(0).toUpperCase(); // 영문 첫 글자
+  };
+
   const handleLogout = async () => {
     try {
       
@@ -220,13 +301,31 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
             <div className="mt-4 pt-4 border-t border-neutral-200">
               <div className="flex items-center gap-3 px-3">
-                <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-semibold">
-                  김
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-neutral-900">김민수</div>
-                  <div className="text-sm text-neutral-500">해운대 씨푸드</div>
-                </div>
+                {isLoading ? (
+                  // 로딩 상태
+                  <>
+                    <div className="w-10 h-10 bg-neutral-200 rounded-full animate-pulse" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-neutral-200 rounded w-20 mb-1 animate-pulse" />
+                      <div className="h-3 bg-neutral-200 rounded w-24 animate-pulse" />
+                    </div>
+                  </>
+                ) : (
+                  // 실제 데이터 표시
+                  <>
+                    <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-semibold">
+                      {getInitial(userProfile?.name || session?.user?.name || '?')}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-neutral-900">
+                        {userProfile?.name || session?.user?.name || '사용자'}
+                      </div>
+                      <div className="text-sm text-neutral-500">
+                        {businessInfo?.name || '사업정보 미등록'}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <Button 
                 variant="ghost" 

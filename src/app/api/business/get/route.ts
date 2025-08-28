@@ -53,6 +53,12 @@ async function getBusinessInfo(accessToken: string) {
         }
 
         const result = await response.json();
+        
+        // BaseResponse 구조인 경우
+        if (result.code && result.data) {
+            return result.data;
+        }
+        // 직접 DTO인 경우
         return result;
     } catch (error) {
         console.error('getBusinessInfo 에러:', error);
@@ -97,16 +103,10 @@ export async function GET(request: NextRequest) {
         
         const businessInfo = await getBusinessInfo(backendAccessToken);
 
-        if (!businessInfo) {
-            return NextResponse.json(
-                { error: '등록된 사업정보가 없습니다.' },
-                { status: 404 }
-            );
-        }
-
+        // 404도 정상 응답으로 처리 (사업정보가 없는 경우)
         return NextResponse.json({
             success: true,
-            data: businessInfo
+            data: businessInfo // null이거나 실제 데이터
         });
     } catch (err: unknown) {
         console.error('사업정보 조회 오류:', err);

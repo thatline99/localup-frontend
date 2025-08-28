@@ -166,9 +166,42 @@ function SignInContent() {
         };
         localStorage.setItem('lastLoginInfo', JSON.stringify(loginInfo));
         
-        // 세션 새로고침 후 리다이렉트
-        await getSession();
-        router.push("/dashboard");
+        // 세션 새로고침
+        const session = await getSession();
+        
+        // 프로필 상태 확인 후 적절한 페이지로 리다이렉트
+        if (session?.user) {
+          // 프로필 정보 확인
+          try {
+            const profileResponse = await fetch('/api/user/profile', {
+              credentials: 'include'
+            });
+            
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json();
+              
+              if (!profileData.data?.isProfileCompleted) {
+                // 프로필 미완성 - 프로필 설정 페이지로
+                router.push("/profile-setup");
+              } else if (!profileData.data?.hasBusinessInfo) {
+                // 프로필은 완성했지만 사업정보 없음 - 사업정보 설정 페이지로
+                router.push("/business-setup");
+              } else {
+                // 모두 완료 - 대시보드로
+                router.push("/dashboard");
+              }
+            } else {
+              // 프로필 조회 실패시 기본적으로 대시보드로 (대시보드에서 다시 체크)
+              router.push("/dashboard");
+            }
+          } catch (error) {
+            console.error('프로필 확인 오류:', error);
+            router.push("/dashboard");
+          }
+        } else {
+          router.push("/dashboard");
+        }
+        
         router.refresh();
       } else {
         // NextAuth 로그인 실패

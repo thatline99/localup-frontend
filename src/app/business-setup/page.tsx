@@ -27,6 +27,7 @@ export default function BusinessSetupPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState(false);
+  const [userName, setUserName] = useState<string>("");
   const [formData, setFormData] = useState({
     businessName: "",
     businessType: "",
@@ -81,15 +82,28 @@ export default function BusinessSetupPage() {
 
   const targetCustomerOptions = Object.values(CustomerSegment);
 
-  // 기존 사업정보 로드
+  // 기존 사업정보 및 프로필 정보 로드
   useEffect(() => {
-    const loadExistingBusinessInfo = async () => {
+    const loadUserInfo = async () => {
       if (!session?.user) {
         setInitialLoading(false);
         return;
       }
 
       try {
+        // 프로필 정보 로드
+        const profileResponse = await fetch("/api/user/profile", {
+          credentials: "include",
+        });
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.data?.name) {
+            setUserName(profileData.data.name);
+          }
+        }
+        
+        // 사업정보 확인
         const response = await fetch("/api/business/get", {
           credentials: "include",
         });
@@ -108,7 +122,7 @@ export default function BusinessSetupPage() {
       }
     };
 
-    loadExistingBusinessInfo();
+    loadUserInfo();
   }, [session?.user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -198,7 +212,7 @@ export default function BusinessSetupPage() {
           <div className="mb-4 text-center">
             <h1 className="text-2xl font-bold text-primary-600">LocalUp</h1>
             <p className="mt-2 text-neutral-600">
-              안녕하세요, {session?.user?.name}님! 사업정보를 입력해주세요.
+              안녕하세요, {userName || session?.user?.name}님! 사업정보를 입력해주세요.
             </p>
           </div>
           <CardTitle className="text-center">사업정보 입력</CardTitle>

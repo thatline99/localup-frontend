@@ -50,25 +50,27 @@ export default function ProfilePage() {
           const business = data.data.data;
           setBusinessInfo(business);
           
-          // 프로필 데이터에 사업정보 반영
-          setProfileData({
-            name: session.user.name || '',
-            email: session.user.email || '',
-            phone: '',
-            position: '대표',
-            businessName: business.name || '',
-            businessType: business.type || '',
-            businessItem: business.item || '',
-            registrationNumber: '',
-            address: business.address || '',
-            addressDetail: business.addressDetail || '',
-            sigunguCode: business.sigunguCode || '',
-            zipCode: business.zipCode || '',
-            averageOrderAmount: business.averageOrderAmount?.toString() || '',
-            seatCount: business.seatCount?.toString() || '',
-            customerSegments: business.customerSegments || [],
-            businessDescription: business.description || '',
-          });
+          // 프로필 데이터에 사업정보 반영 (business가 있을 때만)
+          if (business) {
+            setProfileData({
+              name: session.user.name || '',
+              email: session.user.email || '',
+              phone: '',
+              position: '대표',
+              businessName: business.name || '',
+              businessType: business.type || '',
+              businessItem: business.item || '',
+              registrationNumber: '',
+              address: business.address || '',
+              addressDetail: business.addressDetail || '',
+              sigunguCode: business.sigunguCode || '',
+              zipCode: business.zipCode || '',
+              averageOrderAmount: business.averageOrderAmount?.toString() || '',
+              seatCount: business.seatCount?.toString() || '',
+              customerSegments: business.customerSegments || [],
+              businessDescription: business.description || '',
+            });
+          }
         }
       } catch (error) {
         console.error('사업정보 로드 오류:', error);

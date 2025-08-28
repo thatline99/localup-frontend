@@ -51,13 +51,13 @@ function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-// 사업정보 등록 필요 여부 확인
-async function checkBusinessInfoRequired(
+// 사용자 프로필 정보 확인 (프로필 완성 여부 및 사업정보 여부)
+async function checkUserProfileStatus(
   cookieHeader: string,
-): Promise<boolean> {
+): Promise<{ needsProfile: boolean; needsBusinessInfo: boolean }> {
   try {
     const response = await fetch(
-      `${process.env.BACKEND_API_URL}/users/business`,
+      `${process.env.BACKEND_API_URL}/users/profile`,
       {
         method: "GET",
         headers: {
@@ -66,17 +66,36 @@ async function checkBusinessInfoRequired(
       },
     );
 
-    if (response.status === 404) {
-      return true; // 사업정보 등록 필요
-    } else if (response.status === 200) {
-      return false; // 사업정보 등록 불필요
+    if (response.status === 200) {
+      const result = await response.json();
+      const profileData = result.data;
+      
+      return {
+        needsProfile: !profileData.isProfileCompleted,
+        needsBusinessInfo: !profileData.hasBusinessInfo,
+      };
     } else {
-      return true; // 안전을 위해 등록 필요로 처리
+      // 프로필 조회 실패시 안전하게 둘 다 필요한 것으로 처리
+      return {
+        needsProfile: true,
+        needsBusinessInfo: true,
+      };
     }
   } catch (error) {
-    console.error("사업정보 확인 중 네트워크 오류:", error);
-    return true; // 안전을 위해 등록 필요로 처리
+    console.error("프로필 정보 확인 중 네트워크 오류:", error);
+    return {
+      needsProfile: true,
+      needsBusinessInfo: true,
+    };
   }
+}
+
+// 사업정보 등록 필요 여부 확인 (기존 함수 - 하위 호환성 유지)
+async function checkBusinessInfoRequired(
+  cookieHeader: string,
+): Promise<boolean> {
+  const status = await checkUserProfileStatus(cookieHeader);
+  return status.needsBusinessInfo;
 }
 
 // 로그인 인증 fetch 처리 메서드
@@ -118,9 +137,8 @@ async function authenticateUser(email: string, password: string) {
           ? accessTokenMatch[1]
           : null;
 
-        // 사업정보 등록 여부 확인
-        const needsBusinessInfo =
-          await checkBusinessInfoRequired(setCookieHeader);
+        // 프로필 및 사업정보 상태 확인
+        const profileStatus = await checkUserProfileStatus(setCookieHeader);
 
         // 기본 사용자 객체 반환 (실제 사용자 정보는 JWT에서 추출되거나 별도 API 호출 필요)
         return {
@@ -128,13 +146,15 @@ async function authenticateUser(email: string, password: string) {
           email: email,
           name: email.split("@")[0], // 임시 이름
           role: "user",
-          needsBusinessInfo: needsBusinessInfo,
+          needsProfile: profileStatus.needsProfile,
+          needsBusinessInfo: profileStatus.needsBusinessInfo,
           backendAccessToken: backendAccessToken,
         } as {
           id: string;
           email: string;
           name: string;
           role: string;
+          needsProfile: boolean;
           needsBusinessInfo: boolean;
           backendAccessToken: string | null;
         };
@@ -248,8 +268,8 @@ async function authKakaoUser(kakaoProfile: {
             ? setCookieHeaders.join("; ")
             : setCookieHeader || "";
 
-        // 기존 사용자의 사업정보 등록 여부 확인
-        const needsBusinessInfo = await checkBusinessInfoRequired(
+        // 기존 사용자의 프로필 및 사업정보 상태 확인
+        const profileStatus = await checkUserProfileStatus(
           cookieHeaderForBusiness,
         );
 
@@ -260,7 +280,8 @@ async function authKakaoUser(kakaoProfile: {
           role: "user",
           provider: "kakao",
           isNewUser: false,
-          needsBusinessInfo: needsBusinessInfo,
+          needsProfile: profileStatus.needsProfile,
+          needsBusinessInfo: profileStatus.needsBusinessInfo,
           backendAccessToken: backendAccessToken,
         };
         return userData;
@@ -344,6 +365,7 @@ async function authKakaoUser(kakaoProfile: {
             role: "user",
             provider: "kakao",
             isNewUser: true,
+            needsProfile: true, // 신규 사용자는 전화번호, 직책 입력 필요
             needsBusinessInfo: true, // 신규 사용자는 항상 사업정보 등록 필요
             backendAccessToken: backendAccessToken,
           };
@@ -437,6 +459,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 name: user.name,
                 role: user.role || "user",
                 provider: "credentials",
+                needsProfile: user.needsProfile,
                 needsBusinessInfo: user.needsBusinessInfo,
                 backendAccessToken: user.backendAccessToken,
               }
@@ -479,11 +502,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // 신규 사용자 여부를 user 객체에서 가져오기
           if ((user as { isNewUser?: boolean }).isNewUser !== undefined) {
             token.isNewUser = (user as { isNewUser?: boolean }).isNewUser;
+            token.needsProfile =
+              (user as { needsProfile?: boolean }).needsProfile ||
+              (user as { isNewUser?: boolean }).isNewUser; // 신규 사용자는 프로필 입력 필요
             token.needsBusinessInfo =
               (user as { needsBusinessInfo?: boolean }).needsBusinessInfo ||
               (user as { isNewUser?: boolean }).isNewUser; // 신규 사용자이거나 사업정보가 없는 경우
           } else {
             token.isNewUser = false;
+            token.needsProfile =
+              (user as { needsProfile?: boolean }).needsProfile || false;
             token.needsBusinessInfo =
               (user as { needsBusinessInfo?: boolean }).needsBusinessInfo ||
               false;
@@ -494,6 +522,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.role = user.role || "user";
           token.provider = "credentials";
           token.isNewUser = false;
+          token.needsProfile = 
+            (user as { needsProfile?: boolean }).needsProfile || false;
           token.needsBusinessInfo =
             (user as { needsBusinessInfo?: boolean }).needsBusinessInfo ||
             false;
@@ -531,7 +561,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           (session.user as { needsReauth?: boolean }).needsReauth = true;
         }
 
-        // 사업정보 입력 필요 여부를 세션에 추가
+        // 프로필 및 사업정보 입력 필요 여부를 세션에 추가
+        if (token.needsProfile !== undefined) {
+          (session.user as { needsProfile?: boolean }).needsProfile =
+            token.needsProfile as boolean;
+        }
         if (token.needsBusinessInfo !== undefined) {
           (session.user as { needsBusinessInfo?: boolean }).needsBusinessInfo =
             token.needsBusinessInfo as boolean;
@@ -576,6 +610,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             user.role = response.role || "user";
             (user as { backendAccessToken?: string }).backendAccessToken =
               response.backendAccessToken;
+            (user as { needsProfile?: boolean }).needsProfile =
+              response.needsProfile;
             (user as { needsBusinessInfo?: boolean }).needsBusinessInfo =
               response.needsBusinessInfo;
           }

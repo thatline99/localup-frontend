@@ -142,9 +142,9 @@ export default function DashboardPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-    // 사업정보 존재 여부 확인 (로그인 여부랑 사업정보 등록 여부에 따른 처리)
+    // 프로필 및 사업정보 존재 여부 확인
   useEffect(() => {
-    const checkBusinessInfo = async () => {
+    const checkUserStatus = async () => {
       if (!session?.user) {
         setIsLoading(false);
         return;
@@ -157,51 +157,63 @@ export default function DashboardPage() {
       }
 
       try {
-        const response = await fetch('/api/business/get', {
+        // 1. 먼저 프로필 정보 확인
+        const profileResponse = await fetch('/api/user/profile', {
           credentials: 'include'
         });
 
-        if (response.status === 401) {
+        if (profileResponse.status === 401) {
           // 백엔드 토큰 문제 - 재로그인 필요
           router.replace('/sign-in?message=재로그인이 필요합니다');
           return;
         }
 
-        if (response.status === 404) {
-          // 사업정보가 없음 - 하지만 방금 등록한 경우일 수 있으니 1번 더 시도
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          
+          // 프로필이 완성되지 않은 경우
+          if (!profileData.data?.isProfileCompleted) {
+            router.replace('/profile-setup');
+            return;
+          }
 
-          setTimeout(async () => {
-            try {
-              const retryResponse = await fetch('/api/business/get', {
-                credentials: 'include'
-              });
-
-              if (retryResponse.status === 404) {
-                router.replace('/business-setup');
-              } else if (retryResponse.ok) {
-                setIsLoading(false);
-              } else {
-                // 다른 오류인 경우 대시보드 표시
+          // 사업정보가 없는 경우
+          if (!profileData.data?.hasBusinessInfo) {
+            // 재시도 로직 (방금 등록한 경우 대비)
+            setTimeout(async () => {
+              try {
+                const retryResponse = await fetch('/api/user/profile', {
+                  credentials: 'include'
+                });
+                
+                if (retryResponse.ok) {
+                  const retryData = await retryResponse.json();
+                  if (!retryData.data?.hasBusinessInfo) {
+                    router.replace('/business-setup');
+                  } else {
+                    setIsLoading(false);
+                  }
+                } else {
+                  setIsLoading(false);
+                }
+              } catch (error) {
+                console.error('프로필 재확인 오류:', error);
                 setIsLoading(false);
               }
-            } catch (error) {
-              console.error('사업정보 재시도 오류:', error);
-              setIsLoading(false);
-            }
-          }, 1000);
-
-          return;
+            }, 1000);
+            return;
+          }
         }
 
-        // 사업정보가 있거나 다른 오류인 경우 대시보드 표시
+        // 프로필과 사업정보가 모두 있는 경우 대시보드 표시
         setIsLoading(false);
       } catch (error) {
-        console.error('사업정보 확인 오류:', error);
+        console.error('사용자 상태 확인 오류:', error);
         setIsLoading(false);
       }
     };
 
-    checkBusinessInfo();
+    checkUserStatus();
   }, [session?.user, router]);
 
   useEffect(() => {

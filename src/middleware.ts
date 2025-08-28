@@ -21,8 +21,14 @@ export default auth((req) => {
     }
   }
 
-  // 사업정보 필요 여부 확인: API로 실제 데이터 존재 여부 체크
-  if (isLoggedIn && user?.needsBusinessInfo && !pathname.startsWith('/business-setup') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/api')) {
+  // 프로필 정보 필요 여부 확인
+  if (isLoggedIn && user?.needsProfile && !pathname.startsWith('/profile-setup') && !pathname.startsWith('/api')) {
+    // 프로필 설정이 필요한 경우 프로필 설정 페이지로
+    // 대시보드 접근을 일단 허용하고 페이지에서 체크
+  }
+
+  // 사업정보 필요 여부 확인
+  if (isLoggedIn && user?.needsBusinessInfo && !pathname.startsWith('/business-setup') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/profile-setup') && !pathname.startsWith('/api')) {
     // 실제 사업정보가 있는지 확인하기 위해 대시보드 접근을 허용하고, 
     // 페이지 레벨에서 리다이렉트 처리하도록 함
   }
@@ -37,13 +43,22 @@ export default auth((req) => {
     return Response.redirect(new URL('/dashboard', req.nextUrl))
   }
 
+  // 프로필 설정 페이지: 이미 완료된 사용자는 다음 단계로
+  if (pathname.startsWith('/profile-setup') && isLoggedIn && !user?.needsProfile) {
+    if (user?.needsBusinessInfo) {
+      return Response.redirect(new URL('/business-setup', req.nextUrl))
+    } else {
+      return Response.redirect(new URL('/dashboard', req.nextUrl))
+    }
+  }
+
   // 사업정보 입력 페이지: 이미 설정 완료된 사용자는 대시보드로
   if (pathname.startsWith('/business-setup') && isLoggedIn && !user?.needsBusinessInfo) {
     return Response.redirect(new URL('/dashboard', req.nextUrl))
   }
 
   // 보호된 페이지: 비로그인 사용자는 로그인 페이지로
-  const protectedPaths = ['/home', '/dashboard', '/business-setup']
+  const protectedPaths = ['/home', '/dashboard', '/business-setup', '/profile-setup']
   const isProtectedPage = protectedPaths.some(path => pathname.startsWith(path))
   
   if (isProtectedPage && !isLoggedIn) {
@@ -58,6 +73,7 @@ export const config = {
     '/auth/:path*',
     '/dashboard/:path*',
     '/business-setup/:path*',
+    '/profile-setup/:path*',
     '/sign-in',
     '/sign-up'
   ]
