@@ -7,7 +7,6 @@ async function getBusinessInfo(accessToken: string) {
     
     try {
         // 쿠키와 Authorization 헤더 둘 다 시도
-        
         const response = await fetch(`${process.env.BACKEND_API_URL}/users/business`, {
             method: 'GET',
             headers: {
@@ -36,10 +35,8 @@ async function getBusinessInfo(accessToken: string) {
             if (responseText) {
                 try {
                     const error = JSON.parse(responseText);
-                    console.log('파싱된 오류 내용:', error);
                     throw new Error(error.message || '사업정보 조회에 실패했습니다.');
                 } catch (parseError) {
-                    console.log('JSON 파싱 실패, 원본 텍스트 사용:', parseError);
                     throw new Error(responseText || '사업정보 조회에 실패했습니다.');
                 }
             } else {
@@ -93,6 +90,9 @@ export async function GET(request: NextRequest) {
         }
         
         const backendAccessToken = sessionData.user?.backendAccessToken;
+        
+        console.log('[Business API] Session user:', sessionData.user?.email);
+        console.log('[Business API] Backend token exists:', !!backendAccessToken);
         
         if (!backendAccessToken) {
             return NextResponse.json(

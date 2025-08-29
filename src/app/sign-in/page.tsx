@@ -169,33 +169,50 @@ function SignInContent() {
         // 세션 새로고침
         const session = await getSession();
         
-        // 프로필 상태 확인 후 적절한 페이지로 리다이렉트
+        // 프로필과 사업정보 확인 후 적절한 페이지로 리다이렉트
         if (session?.user) {
-          // 프로필 정보 확인
           try {
+            // 1. 프로필 정보 확인
             const profileResponse = await fetch('/api/user/profile', {
               credentials: 'include'
             });
             
+            let hasProfile = false;
+            let profileData = null;
+            
             if (profileResponse.ok) {
-              const profileData = await profileResponse.json();
-              
-              if (!profileData.data?.isProfileCompleted) {
-                // 프로필 미완성 - 프로필 설정 페이지로
-                router.push("/profile-setup");
-              } else if (!profileData.data?.hasBusinessInfo) {
-                // 프로필은 완성했지만 사업정보 없음 - 사업정보 설정 페이지로
-                router.push("/business-setup");
-              } else {
-                // 모두 완료 - 대시보드로
-                router.push("/dashboard");
-              }
+              profileData = await profileResponse.json();
+              // 프로필이 존재하고 필수 정보가 있는지 확인
+              hasProfile = !!(profileData.data?.name && profileData.data?.phoneNumber);
+            }
+            
+            // 2. 사업정보 확인
+            const businessResponse = await fetch('/api/business/get', {
+              credentials: 'include'
+            });
+            
+            let hasBusinessInfo = false;
+            
+            if (businessResponse.ok) {
+              const businessData = await businessResponse.json();
+              // 사업정보가 존재하는지 확인
+              hasBusinessInfo = !!(businessData.data && (businessData.data.name || businessData.data.businessName));
+            }
+            
+            // 3. 상태에 따라 리다이렉트
+            if (!hasProfile) {
+              // 프로필 정보가 없음 - 프로필 설정 페이지로
+              router.push("/profile");
+            } else if (!hasBusinessInfo) {
+              // 프로필은 있지만 사업정보 없음 - 사업정보 설정 페이지로
+              router.push("/business");
             } else {
-              // 프로필 조회 실패시 기본적으로 대시보드로 (대시보드에서 다시 체크)
+              // 모두 완료 - 대시보드로
               router.push("/dashboard");
             }
           } catch (error) {
-            console.error('프로필 확인 오류:', error);
+            console.error('프로필/사업정보 확인 오류:', error);
+            // 에러 발생시 일단 대시보드로 이동 (대시보드에서 다시 체크)
             router.push("/dashboard");
           }
         } else {
@@ -318,14 +335,24 @@ function SignInContent() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    signIn("kakao", {
-                      callbackUrl: "/dashboard",
-                      redirect: true,
-                    });
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      // 카카오 로그인 후 자동으로 프로필/사업정보 체크하도록 콜백 URL 설정
+                      await signIn("kakao", {
+                        callbackUrl: "/api/auth/callback-redirect",
+                        redirect: true,
+                      });
+                    } catch (error) {
+                      console.error('카카오 로그인 오류:', error);
+                      setError('카카오 로그인 중 오류가 발생했습니다.');
+                    } finally {
+                      setLoading(false);
+                    }
                   }}
                   className="relative h-11 w-full overflow-hidden rounded-lg transition-opacity hover:opacity-90"
                   style={{ backgroundColor: "#FEE500" }}
+                  disabled={loading}
                 >
                   <img
                     src="/images/auth/kakao-login-button.png"

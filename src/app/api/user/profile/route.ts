@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
                 'Authorization': `Bearer ${backendAccessToken}`
             }
         });
-
+        
         if (!response.ok) {
             const errorText = await response.text();
             return NextResponse.json(
