@@ -7,6 +7,7 @@ import { getSession } from 'next-auth/react';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
 import { BusinessType, CustomerSegment, CustomerSegmentLabels } from '../../types';
 import AddressSearch from '@/components/AddressSearch';
+import useUserStore from '@/store/userStore';
 
 const businessTypeMap: Record<string, string> = {
   'RESTAURANT': '음식점',
@@ -198,6 +199,10 @@ function BusinessContent() {
 
       // 성공 시 세션 새로고침 후 적절한 페이지로 이동
       await getSession();
+      
+      // Zustand store 업데이트
+      const { fetchUserData } = useUserStore.getState();
+      await fetchUserData();
       
       // 수정 모드인 경우 프로필 페이지로, 신규 등록인 경우 대시보드로 이동
       if (isUpdateMode) {

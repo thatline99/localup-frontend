@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import useUserStore from "@/store/userStore";
 import {
   Button,
   Input,
@@ -169,9 +170,15 @@ function SignInContent() {
         // 세션 새로고침
         const session = await getSession();
         
+        // Zustand store에서 사용자 데이터 로드
+        const { fetchUserData } = useUserStore.getState();
+        
         // 프로필과 사업정보 확인 후 적절한 페이지로 리다이렉트
         if (session?.user) {
           try {
+            // store에 사용자 데이터 로드
+            await fetchUserData();
+            
             // 1. 프로필 정보 확인
             const profileResponse = await fetch('/api/user/profile', {
               credentials: 'include'

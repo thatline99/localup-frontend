@@ -5,20 +5,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
 import { signOut, useSession } from 'next-auth/react';
+import useUserStore from '@/store/userStore';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-}
-
-interface UserProfileData {
-  name: string;
-  phoneNumber?: string;
-  position?: string;
-  email: string;
-}
-
-interface BusinessData {
-  name: string;
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
@@ -26,65 +16,20 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { data: session } = useSession();
-  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
-  const [businessInfo, setBusinessInfo] = useState<BusinessData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Zustand store 사용
+  const { userProfile, businessInfo, isLoading, fetchUserData, clearUser } = useUserStore();
   
   // 사용자 프로필 및 사업정보 로드
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!session?.user) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // 프로필 정보 가져오기
-        const profileResponse = await fetch('/api/user/profile', {
-          credentials: 'include'
-        });
-        
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json();
-          if (profileData.data) {
-            setUserProfile({
-              name: profileData.data.name || session.user.name || '사용자',
-              phoneNumber: profileData.data.phoneNumber,
-              position: profileData.data.position,
-              email: profileData.data.email || session.user.email || ''
-            });
-          }
-        }
-
-        // 사업정보 가져오기
-        const businessResponse = await fetch('/api/business/get', {
-          credentials: 'include'
-        });
-        
-        if (businessResponse.ok) {
-          const businessData = await businessResponse.json();
-          
-          if (businessData.success && businessData.data && businessData.data.name) {
-            // 데이터가 정상적으로 있는 경우
-            setBusinessInfo({
-              name: businessData.data.name
-            });
-          } else {
-            // 데이터가 없거나 name 필드가 없는 경우
-            setBusinessInfo({
-              name: '사업정보 미등록'
-            });
-          }
-        }
-      } catch (error) {
-        console.error('사용자 정보 로드 오류:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, [session]);
+    if (session?.user) {
+      // 세션이 있으면 사용자 데이터 로드
+      fetchUserData();
+    } else {
+      // 세션이 없으면 store 초기화
+      clearUser();
+    }
+  }, [session, fetchUserData, clearUser]);
 
   // 사용자 이름의 첫 글자 추출
   const getInitial = (name: string) => {
@@ -99,6 +44,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const handleLogout = async () => {
     try {
+      // store 초기화
+      clearUser();
       
       // 카카오 로그인인 경우 카카오 로그아웃도 함께 처리
       if (session?.user?.provider === 'kakao') {

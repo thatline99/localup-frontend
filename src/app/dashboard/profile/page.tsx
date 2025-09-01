@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, useToast } from '@/components/ui';
 import { PageLayout } from '@/components/dashboard/PageLayout';
 import { CustomerSegmentLabels } from '@/types';
+import useUserStore from '@/store/userStore';
 
 const businessTypeMap: Record<string, string> = {
   'RESTAURANT': '음식점',
@@ -118,6 +119,11 @@ export default function ProfilePage() {
       if (response.ok) {
         setOriginalProfileData(profileData);
         setIsEditingProfile(false);
+        
+        // Zustand store 업데이트
+        const { fetchUserData } = useUserStore.getState();
+        await fetchUserData();
+        
         showToast('프로필이 성공적으로 수정되었습니다.', 'success');
       } else {
         const error = await response.json();
