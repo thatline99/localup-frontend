@@ -89,8 +89,8 @@ export const WeatherWidget = () => {
         <CardContent>
           <div className="animate-pulse space-y-4">
             <div className="h-20 bg-gray-200 rounded"></div>
-            <div className="grid grid-cols-4 gap-3">
-              {[1,2,3,4].map(i => (
+            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+              {[1,2,3].map(i => (
                 <div key={i} className="h-24 bg-gray-200 rounded"></div>
               ))}
             </div>
@@ -103,7 +103,14 @@ export const WeatherWidget = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>날씨 영향 분석</CardTitle>
+        <CardTitle>
+          날씨 영향 분석
+          {businessInfo?.address && (
+            <span className="text-sm font-normal text-neutral-500 ml-2">
+              {businessInfo.address.split(' ').slice(-1)[0]}
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -121,32 +128,33 @@ export const WeatherWidget = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-4 gap-3">
-            {weatherData?.slice(0, 4).map((forecast, index) => {
+          <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+            {weatherData?.slice(0, 3).map((forecast, index) => {
               const dominantCondition = getDominantCondition(forecast);
               const maxPrecipitation = getMaxPrecipitation(forecast);
               
               return (
-                <div key={forecast.date} className="text-center">
-                  <p className="text-xs text-neutral-500 mb-1">{getDayLabel(index)}</p>
-                  <div className="text-2xl mb-2">{getWeatherIcon(dominantCondition)}</div>
-                  <p className="text-sm font-medium">{forecast.dailyMaximumTemperature || '-'}°</p>
-                  <p className="text-xs text-neutral-500">{forecast.dailyMinimumTemperature || '-'}°</p>
+                <div key={forecast.date} className="text-center p-3 rounded-lg hover:bg-neutral-50 transition-colors">
+                  <p className="text-sm font-medium text-neutral-700 mb-2">{getDayLabel(index)}</p>
+                  <div className="text-3xl mb-2">{getWeatherIcon(dominantCondition)}</div>
+                  <div className="flex justify-center items-center gap-1">
+                    <span className="text-lg font-semibold">{forecast.dailyMaximumTemperature || '-'}°</span>
+                    <span className="text-sm text-neutral-400">/</span>
+                    <span className="text-sm text-neutral-500">{forecast.dailyMinimumTemperature || '-'}°</span>
+                  </div>
                   {maxPrecipitation > 0 && (
-                    <p className="text-xs text-blue-600 mt-1">{maxPrecipitation}%</p>
+                    <div className="mt-2 flex items-center justify-center gap-1">
+                      <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs text-blue-600">{maxPrecipitation}%</span>
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
 
-          {businessInfo && (
-            <div className="pt-4 border-t">
-              <p className="text-xs text-neutral-500 mb-2">
-                📍 {businessInfo.address || '사업장 주소'}
-              </p>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
