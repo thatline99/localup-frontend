@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { auth } from "@/auth";
 
 export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
     try {
         // 세션 확인
-        const session = await getServerSession(authOptions);
+        const session = await auth();
         
         if (!session?.user) {
             // 세션이 없으면 로그인 페이지로
