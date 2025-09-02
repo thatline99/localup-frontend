@@ -97,7 +97,7 @@ export const EventsWidget = () => {
           return (
             <div
               key={event.contentId}
-              className={`flex gap-3 p-2 rounded-lg hover:bg-neutral-50 transition-colors ${
+              className={`flex gap-2.5 p-2 rounded-lg hover:bg-neutral-50 transition-colors ${
                 isMain ? 'border border-primary-200 bg-primary-50' : ''
               }`}
             >
@@ -107,15 +107,15 @@ export const EventsWidget = () => {
                   <img
                     src={event.thumbnailImageUrl}
                     alt={event.title}
-                    className="w-12 h-12 object-cover rounded"
+                    className="w-11 h-11 object-cover rounded"
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
                       target.style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="w-12 h-12 bg-neutral-200 rounded flex items-center justify-center">
-                    <svg className="w-6 h-6 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-11 h-11 bg-neutral-200 rounded flex items-center justify-center">
+                    <svg className="w-5 h-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
@@ -127,6 +127,9 @@ export const EventsWidget = () => {
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="text-sm font-medium text-neutral-900 line-clamp-1">
                     {event.title}
+                    {isMain && (
+                      <span className="ml-1 text-xs text-primary-600">★</span>
+                    )}
                   </h4>
                   <span className={`text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap ${status.className}`}>
                     {status.text}
@@ -135,7 +138,7 @@ export const EventsWidget = () => {
                 
                 <div className="mt-1 space-y-0.5">
                   <div className="flex items-center gap-1">
-                    <svg className="w-3 h-3 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3 h-3 text-neutral-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <span className="text-xs text-neutral-600 line-clamp-1">
@@ -144,19 +147,13 @@ export const EventsWidget = () => {
                   </div>
                   
                   <div className="flex items-center gap-1">
-                    <svg className="w-3 h-3 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3 h-3 text-neutral-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <span className="text-xs text-neutral-600 line-clamp-1">{event.address}</span>
                   </div>
                 </div>
-
-                {isMain && (
-                  <span className="inline-block mt-1 text-xs text-primary-600 font-medium">
-                    주요 이벤트
-                  </span>
-                )}
               </div>
             </div>
           );
