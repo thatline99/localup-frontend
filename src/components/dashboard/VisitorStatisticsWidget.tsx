@@ -211,12 +211,6 @@ export const VisitorStatisticsWidget = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* 안내 메시지 */}
-        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-xs text-amber-800">
-            작년 동기간 방문객 데이터를 기반으로 올해 예상 방문객 수를 추정할 수 있습니다.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
