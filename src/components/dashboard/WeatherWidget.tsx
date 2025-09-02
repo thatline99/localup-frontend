@@ -25,7 +25,7 @@ export const WeatherWidget = () => {
           }
         }
       } catch (error) {
-        console.error('날씨 데이터 로드 실패:', error);
+        // 에러 발생 시 무시
       } finally {
         setLoading(false);
       }
@@ -51,7 +51,7 @@ export const WeatherWidget = () => {
         setWeatherInsight(data.insight);
       }
     } catch (error) {
-      console.error('날씨 인사이트 생성 실패:', error);
+      // 에러 발생 시 무시
     }
   };
 
@@ -107,7 +107,22 @@ export const WeatherWidget = () => {
           날씨 영향 분석
           {businessInfo?.address && (
             <span className="text-sm font-normal text-neutral-500 ml-2">
-              {businessInfo.address.split(' ').slice(-1)[0]}
+              {(() => {
+                const parts = businessInfo.address.split(' ');
+                // 시/군 찾기
+                const si = parts.find(part => part.endsWith('시') || part.endsWith('군'));
+                // 구/군 찾기
+                const gu = parts.find(part => part.endsWith('구') || (part.endsWith('군') && part !== si));
+                
+                if (si && gu) {
+                  return `${si} ${gu}`;
+                } else if (si) {
+                  return si;
+                } else if (gu) {
+                  return gu;
+                }
+                return '';
+              })()}
             </span>
           )}
         </CardTitle>
