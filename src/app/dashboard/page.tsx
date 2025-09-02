@@ -15,7 +15,7 @@ export default function DashboardPage() {
         {/* 비즈니스 메트릭 카드들 */}
         <div>
           <h2 className="text-lg font-semibold text-neutral-900 mb-4">
-            📊 비즈니스 예측
+            비즈니스 예측
           </h2>
           <BusinessMetrics />
         </div>

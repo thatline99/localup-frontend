@@ -69,7 +69,7 @@ export const EventsWidget = () => {
     return (
       <div className="bg-white rounded-lg border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-          🎯 지역 이벤트
+          지역 이벤트
         </h3>
         <div className="flex items-center justify-center h-48 text-neutral-500">
           <p>현재 진행 중인 이벤트가 없습니다</p>
@@ -81,7 +81,7 @@ export const EventsWidget = () => {
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-6">
       <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-        🎯 지역 이벤트
+        지역 이벤트
       </h3>
       
       <div className="space-y-4">
@@ -150,7 +150,7 @@ export const EventsWidget = () => {
                 {isMain && (
                   <div className="mt-2">
                     <span className="text-xs text-primary-600 font-medium">
-                      ⭐ 주요 이벤트
+                      주요 이벤트
                     </span>
                   </div>
                 )}
@@ -159,14 +159,6 @@ export const EventsWidget = () => {
           );
         })}
       </div>
-
-      {events.length > 5 && (
-        <div className="mt-4 pt-4 border-t border-neutral-200">
-          <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
-            더 많은 이벤트 보기 →
-          </button>
-        </div>
-      )}
     </div>
   );
 };
