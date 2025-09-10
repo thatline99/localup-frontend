@@ -13,7 +13,7 @@ import {
 } from "@/components/ui";
 
 export default function ProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -26,6 +26,11 @@ export default function ProfilePage() {
   // 세션 체크 및 기존 프로필 확인
   useEffect(() => {
     const checkProfile = async () => {
+      // 세션 로딩 중이면 대기
+      if (status === "loading") {
+        return;
+      }
+      
       if (!session?.user) {
         router.push("/sign-in");
         return;
@@ -38,7 +43,7 @@ export default function ProfilePage() {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.data?.name && data.data?.phone) {
+          if (data.data?.name && data.data?.phoneNumber) {
             // 이미 프로필이 완성된 경우
             const businessResponse = await fetch("/api/business/get", {
               credentials: "include",
@@ -64,7 +69,7 @@ export default function ProfilePage() {
     };
 
     checkProfile();
-  }, [session, router]);
+  }, [session, status, router]);
 
   const validateForm = () => {
     if (!formData.name.trim()) {
