@@ -17,7 +17,7 @@ const businessTypeMap: Record<string, string> = {
 };
 
 function BusinessContent() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -61,6 +61,11 @@ function BusinessContent() {
   // 세션 체크 및 기존 사업정보 확인
   useEffect(() => {
     const checkBusinessInfo = async () => {
+      // 세션 로딩 중이면 대기
+      if (status === "loading") {
+        return;
+      }
+      
       if (!session?.user) {
         router.push("/sign-in");
         return;
@@ -109,8 +114,16 @@ function BusinessContent() {
           const businessData = data.success ? data.data : data.data;
           
           if (businessData && (businessData.businessName || businessData.name)) {
-            // 기존 사업정보가 있음 - 수정 모드
-            setIsUpdateMode(true);
+            // 쿼리 파라미터로 mode=update가 있는 경우만 수정 모드로 유지, 없으면 대시보드로 이동
+            const mode = searchParams.get('mode');
+            if (mode === 'update') {
+              setIsUpdateMode(true);
+            } else {
+              // 사업정보가 이미 있으면 대시보드로 이동
+              router.push('/dashboard');
+              return;
+            }
+            
             const businessInfo = businessData;
             
             // API 응답이 business prefix가 있는 경우와 없는 경우 모두 처리
@@ -155,7 +168,7 @@ function BusinessContent() {
     };
 
     checkBusinessInfo();
-  }, [session?.user, router, searchParams]);
+  }, [session, status, router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

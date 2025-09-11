@@ -39,8 +39,7 @@ export async function GET(request: NextRequest) {
         const response = await fetch(`${process.env.BACKEND_API_URL}/users/profile`, {
             method: 'GET',
             headers: {
-                'Cookie': `accessToken=${backendAccessToken}`,
-                'Authorization': `Bearer ${backendAccessToken}`
+                'Cookie': `accessToken=${backendAccessToken}`
             }
         });
         
@@ -104,7 +103,6 @@ export async function PATCH(request: NextRequest) {
             method: 'PATCH',
             headers: {
                 'Cookie': `accessToken=${backendAccessToken}`,
-                'Authorization': `Bearer ${backendAccessToken}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(body)

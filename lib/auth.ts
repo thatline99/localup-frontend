@@ -70,8 +70,11 @@ async function checkUserProfileStatus(
       const result = await response.json();
       const profileData = result.data;
       
+      // 프로필 완성 여부를 실제 데이터로 확인 (다른 로직과 통일)
+      const hasProfile = !!(profileData.name && profileData.phoneNumber);
+      
       return {
-        needsProfile: !profileData.isProfileCompleted,
+        needsProfile: !hasProfile,
         needsBusinessInfo: !profileData.hasBusinessInfo,
       };
     } else {
@@ -90,13 +93,6 @@ async function checkUserProfileStatus(
   }
 }
 
-// 사업정보 등록 필요 여부 확인 (기존 함수 - 하위 호환성 유지)
-async function checkBusinessInfoRequired(
-  cookieHeader: string,
-): Promise<boolean> {
-  const status = await checkUserProfileStatus(cookieHeader);
-  return status.needsBusinessInfo;
-}
 
 // 로그인 인증 fetch 처리 메서드
 async function authenticateUser(email: string, password: string) {
