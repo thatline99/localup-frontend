@@ -173,7 +173,16 @@ export default function AISolutionPage() {
       }
 
       const result = await response.json();
+      console.log('API 응답:', result);
+      console.log('현재 selectedSessionId:', selectedSessionId);
+      console.log('응답에서 받은 sessionId:', result.sessionId);
       
+      // 새로운 세션이 생성된 경우 sessionId 상태 업데이트
+      const newSessionId = result.sessionId || result.data?.sessionId || result.session_id;
+      if (!selectedSessionId && newSessionId) {
+        console.log('sessionId 상태 업데이트:', newSessionId);
+        setSelectedSessionId(newSessionId);
+      }
       
       const assistantMessage: Message = {
         id: Date.now() + 1,
