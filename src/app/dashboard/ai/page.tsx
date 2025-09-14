@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, Button, Input } from '@/components/ui';
+import useAIStore from '@/store/aiStore';
 
 interface Message {
   id: number;
@@ -18,16 +19,13 @@ interface Message {
 }
 
 export default function AISolutionPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      role: 'assistant',
-      content: '안녕하세요! 로컬업 AI 비즈니스 어시스턴트입니다. 무엇을 도와드릴까요?',
-      timestamp: new Date(),
-    },
-  ]);
+  const { selectedSessionId, setSelectedSessionId } = useAIStore();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionTitle, setSessionTitle] = useState('AI 솔루션');
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickQuestions = [
@@ -42,73 +40,198 @@ export default function AISolutionPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleDeleteSession = async () => {
+    if (!selectedSessionId || isDeleting) return;
+
+    const confirmDelete = window.confirm('이 채팅 세션을 삭제하시겠습니까?');
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/ai/session/${selectedSessionId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // 세션 ID 상태 초기화
+        setSelectedSessionId(null);
+        // 페이지 새로고침
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || '세션 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('세션 삭제 오류:', error);
+      alert('세션 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const loadSessionDetail = async (sessionId: string) => {
+    setSessionLoading(true);
+    try {
+      const response = await fetch(`/api/ai/session/${sessionId}`);
+      
+      if (response.ok) {
+        const sessionData = await response.json();
+        const sessionDetail = sessionData.data || sessionData;
+        
+        // 세션 제목 설정
+        setSessionTitle(sessionDetail.title || 'AI 솔루션');
+        
+        // 메시지 목록 설정
+        if (sessionDetail.messages && sessionDetail.messages.length > 0) {
+          const formattedMessages = sessionDetail.messages.map((msg: any, index: number) => {
+            const normalizedRole = msg.role?.toUpperCase();
+            return {
+              id: index + 1,
+              role: (normalizedRole === 'USER' || normalizedRole === 'HUMAN') ? 'user' : 'assistant',
+              content: msg.content,
+              timestamp: new Date(msg.timestamp),
+            };
+          });
+          setMessages(formattedMessages);
+        } else {
+          // 메시지가 없는 경우 기본 인사말
+          setMessages([{
+            id: 1,
+            role: 'assistant',
+            content: '안녕하세요! 로컬업 AI 비즈니스 어시스턴트입니다. 무엇을 도와드릴까요?',
+            timestamp: new Date(),
+          }]);
+        }
+      }
+    } catch (error) {
+      console.error('세션 정보 로드 오류:', error);
+      // 오류 시 기본 상태로 초기화
+      setSessionTitle('AI 솔루션');
+      setMessages([{
+        id: 1,
+        role: 'assistant',
+        content: '안녕하세요! 로컬업 AI 비즈니스 어시스턴트입니다. 무엇을 도와드릴까요?',
+        timestamp: new Date(),
+      }]);
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      loadSessionDetail(selectedSessionId);
+    } else {
+      // 새 채팅인 경우 기본 상태로 초기화
+      setSessionTitle('AI 솔루션');
+      setMessages([{
+        id: 1,
+        role: 'assistant',
+        content: '안녕하세요! 로컬업 AI 비즈니스 어시스턴트입니다. 무엇을 도와드릴까요?',
+        timestamp: new Date(),
+      }]);
+    }
+  }, [selectedSessionId]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (messageToSend?: string) => {
+    const messageContent = messageToSend || input.trim();
+    if (!messageContent || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now(),
       role: 'user',
-      content: input,
+      content: messageContent,
       timestamp: new Date(),
     };
 
+    const currentInput = messageContent;
     setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    if (!messageToSend) {
+      setInput('');
+    }
     setIsLoading(true);
 
-    // AI 응답 시뮬레이션
-    setTimeout(() => {
+    try {
+      // AI 솔루션 API 호출
+      const response = await fetch('/api/ai/solution', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          sessionId: selectedSessionId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI 솔루션 요청에 실패했습니다.');
+      }
+
+      const result = await response.json();
+      
+      
       const assistantMessage: Message = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: generateMockResponse(input),
+        content: result.data?.reply || result.reply || '응답을 받을 수 없습니다.',
         timestamp: new Date(),
-        data: generateMockData(input),
       };
+
       setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  const generateMockResponse = (query: string): string => {
-    if (query.includes('매출')) {
-      return '오늘의 예상 매출은 약 350만원으로, 평소 대비 15% 증가할 것으로 예측됩니다. 부산국제영화제의 영향으로 저녁 시간대 방문객이 증가할 것으로 보입니다.';
-    } else if (query.includes('트렌드')) {
-      return '이번 주 주요 트렌드는 "영화제 관람객"과 "해산물 요리"입니다. 특히 #부산국제영화제 해시태그가 320% 증가했으며, 영화 관련 프로모션이 효과적일 것으로 분석됩니다.';
-    } else if (query.includes('경쟁사')) {
-      return '주변 경쟁사 대비 우리 가게의 강점은 1) 가장 늦은 영업시간(새벽 2시), 2) 활어회 전문점, 3) 단체 예약 가능입니다. 특히 영화제 기간 늦은 시간 영업이 큰 경쟁력이 될 것입니다.';
-    } else if (query.includes('재고')) {
-      return '주말 예상 방문객 증가를 고려하여 평소보다 30% 추가 재고를 준비하시길 권장합니다. 특히 인기 메뉴인 모듬회와 매운탕 재료를 충분히 확보하세요.';
-    } else if (query.includes('리뷰')) {
-      return '최근 부정적 리뷰의 주요 내용은 "대기 시간"(43%)과 "가격"(28%)입니다. 피크타임 대기 관리와 세트 메뉴 도입을 통한 가격 부담 완화를 제안드립니다.';
-    }
-    return '네, 분석해드리겠습니다. 구체적으로 어떤 부분이 궁금하신가요?';
-  };
-
-  const generateMockData = (query: string): Message['data'] => {
-    if (query.includes('매출')) {
-      return {
-        type: 'chart',
-        data: {
-          labels: ['오전', '점심', '저녁', '심야'],
-          values: [50, 120, 150, 30],
-        },
+    } catch (error) {
+      console.error('AI 솔루션 오류:', error);
+      
+      // 오류 발생 시 폴백 응답
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: '죄송합니다. 일시적인 오류가 발생했습니다. 다시 시도해 주세요.',
+        timestamp: new Date(),
       };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
-    return undefined;
   };
+
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold text-neutral-900">AI 솔루션</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          AI와 대화하며 비즈니스 인사이트를 얻어보세요
-        </p>
+        {sessionLoading ? (
+          <div className="animate-pulse">
+            <div className="h-8 bg-neutral-200 rounded w-48 mb-2"></div>
+            <div className="h-4 bg-neutral-200 rounded w-64"></div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-900">{sessionTitle}</h1>
+              <p className="mt-1 text-sm text-neutral-600">
+                {selectedSessionId ? '기존 채팅을 이어가세요' : 'AI와 대화하며 비즈니스 인사이트를 얻어보세요'}
+              </p>
+            </div>
+            {selectedSessionId && (
+              <button
+                onClick={handleDeleteSession}
+                disabled={isDeleting}
+                className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="채팅 세션 삭제"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                {isDeleting ? '삭제 중...' : '삭제'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex gap-6 overflow-hidden">
@@ -209,8 +332,9 @@ export default function AISolutionPage() {
               {quickQuestions.map((question, index) => (
                 <button
                   key={index}
-                  onClick={() => setInput(question)}
-                  className="w-full text-left p-3 rounded-lg border border-neutral-200 hover:border-primary-300 hover:bg-primary-50 transition-colors text-sm"
+                  onClick={() => handleSend(question)}
+                  disabled={isLoading}
+                  className="w-full text-left p-3 rounded-lg border border-neutral-200 hover:border-primary-300 hover:bg-primary-50 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {question}
                 </button>

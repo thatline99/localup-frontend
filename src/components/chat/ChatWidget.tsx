@@ -11,17 +11,22 @@ interface Message {
 
 export const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 클라이언트에서만 초기 메시지 설정
+  useEffect(() => {
+    setIsClient(true);
+    setMessages([{
       id: '1',
       text: '안녕하세요! LocalUp 고객센터입니다. 무엇을 도와드릴까요?',
       sender: 'bot',
       timestamp: new Date(),
-    },
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+    }]);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -145,10 +150,10 @@ export const ChatWidget = () => {
                 <p className={`text-xs mt-1 ${
                   message.sender === 'user' ? 'text-white/70' : 'text-neutral-500'
                 }`}>
-                  {message.timestamp.toLocaleTimeString('ko-KR', {
+                  {isClient ? message.timestamp.toLocaleTimeString('ko-KR', {
                     hour: '2-digit',
                     minute: '2-digit',
-                  })}
+                  }) : ''}
                 </p>
               </div>
             </div>
