@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
 import { signOut, useSession } from 'next-auth/react';
 import useUserStore from '@/store/userStore';
+import useAIStore from '@/store/aiStore';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -15,10 +16,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const { data: session } = useSession();
   
   // Zustand store 사용
   const { userProfile, businessInfo, isLoading, fetchUserData, clearUser } = useUserStore();
+  const { selectedSessionId, setSelectedSessionId } = useAIStore();
   
   // 사용자 프로필 및 사업정보 로드
   useEffect(() => {
@@ -31,6 +36,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     }
   }, [session, fetchUserData, clearUser]);
 
+
   // 사용자 이름의 첫 글자 추출
   const getInitial = (name: string) => {
     if (!name) return '?';
@@ -40,6 +46,53 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       return name.charAt(0); // 한글 성씨
     }
     return name.charAt(0).toUpperCase(); // 영문 첫 글자
+  };
+
+  const toggleSubmenu = (menuName: string) => {
+    setExpandedMenus(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(menuName)) {
+        newSet.delete(menuName);
+      } else {
+        newSet.add(menuName);
+        // AI 솔루션 메뉴를 열 때 채팅 세션 목록 로드
+        if (menuName === 'AI 솔루션' && chatSessions.length === 0) {
+          fetchChatSessions();
+        }
+      }
+      return newSet;
+    });
+  };
+
+  const fetchChatSessions = async () => {
+    if (sessionsLoading) return;
+    
+    setSessionsLoading(true);
+    try {
+      const response = await fetch('/api/ai/solution', {
+        method: 'GET',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const sessions = data.data || data || [];
+        setChatSessions(sessions);
+        
+        // AI 솔루션 메뉴가 이미 펼쳐진 상태가 아니라면 펼치기
+        if (sessions.length > 0 && !expandedMenus.has('AI 솔루션')) {
+          setExpandedMenus(prev => new Set([...prev, 'AI 솔루션']));
+        }
+      }
+    } catch (error) {
+      console.error('채팅 세션 목록 조회 오류:', error);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handleSessionClick = (sessionId: string | null, href: string) => {
+    setSelectedSessionId(sessionId);
+    router.push(href);
   };
 
   const handleLogout = async () => {
@@ -102,6 +155,18 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       ),
+      subItems: [
+        {
+          name: '새 채팅',
+          href: '/dashboard/ai',
+          isNew: true,
+        },
+        ...chatSessions.map((session: any) => ({
+          name: session.title || `채팅 ${session.id}`,
+          href: '/dashboard/ai',
+          sessionId: session.id,
+        })),
+      ],
     },
     // 미사용 메뉴
     // {
@@ -157,7 +222,24 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   ];
 
   return (
-    <div className="h-screen bg-neutral-50 flex overflow-hidden">
+    <>
+      <style jsx>{`
+        .submenu-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .submenu-scroll::-webkit-scrollbar-track {
+          background: #f5f5f5;
+          border-radius: 2px;
+        }
+        .submenu-scroll::-webkit-scrollbar-thumb {
+          background: #d4d4d8;
+          border-radius: 2px;
+        }
+        .submenu-scroll::-webkit-scrollbar-thumb:hover {
+          background: #a3a3a3;
+        }
+      `}</style>
+      <div className="h-screen bg-neutral-50 flex overflow-hidden">
       {/* 모바일 헤더 */}
       <div className="lg:hidden">
         <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-neutral-200">
@@ -203,22 +285,95 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <div className="flex-1 py-4 min-h-0">
             <nav className="px-3 space-y-1">
               {navigation.map((item) => {
-                const isActive = pathname === item.href;
+                const hasSubItems = item.subItems && item.subItems.length > 0;
+                const isExpanded = expandedMenus.has(item.name);
+                const isActive = pathname === item.href || (hasSubItems && item.subItems?.some(subItem => pathname === subItem.href));
+
                 return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`
-                      flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
-                      ${isActive 
-                        ? 'bg-primary-50 text-primary-700' 
-                        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
-                      }
-                    `}
-                  >
-                    {item.icon}
-                    <span className="font-medium">{item.name}</span>
-                  </Link>
+                  <div key={item.name}>
+                    {/* 메인 메뉴 아이템 */}
+                    {hasSubItems ? (
+                      <button
+                        onClick={() => toggleSubmenu(item.name)}
+                        className={`
+                          w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors
+                          ${isActive 
+                            ? 'bg-primary-50 text-primary-700' 
+                            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center gap-3">
+                          {item.icon}
+                          <span className="font-medium">{item.name}</span>
+                        </div>
+                        <svg 
+                          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className={`
+                          flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
+                          ${isActive 
+                            ? 'bg-primary-50 text-primary-700' 
+                            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                          }
+                        `}
+                      >
+                        {item.icon}
+                        <span className="font-medium">{item.name}</span>
+                      </Link>
+                    )}
+
+                    {/* 서브메뉴 */}
+                    {hasSubItems && isExpanded && (
+                      <div className="ml-8 mt-1">
+                        {sessionsLoading && item.name === 'AI 솔루션' && (
+                          <div className="px-3 py-2 text-sm text-neutral-500">
+                            채팅 목록 로딩 중...
+                          </div>
+                        )}
+                        <div 
+                          className="max-h-64 overflow-y-auto space-y-1 pr-1 submenu-scroll" 
+                          style={{
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#d4d4d8 #f5f5f5'
+                          }}
+                        >
+                          {item.subItems?.map((subItem: any) => {
+                            const isSubActive = pathname === subItem.href && (subItem.sessionId ? selectedSessionId === subItem.sessionId : subItem.isNew);
+                            return (
+                              <button
+                                key={subItem.sessionId || subItem.name}
+                                onClick={() => handleSessionClick(subItem.sessionId || null, subItem.href)}
+                                className={`
+                                  w-full text-left flex items-center px-3 py-2 rounded-lg transition-colors text-sm
+                                  ${isSubActive 
+                                    ? 'bg-primary-50 text-primary-700' 
+                                    : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700'
+                                  }
+                                `}
+                              >
+                                {subItem.isNew && (
+                                  <svg className="w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  </svg>
+                                )}
+                                <span className="truncate">{subItem.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </nav>
@@ -306,6 +461,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {children}
         </div>
       </main>
-    </div>
+      </div>
+    </>
   );
 };
