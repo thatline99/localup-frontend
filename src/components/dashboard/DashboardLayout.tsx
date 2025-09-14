@@ -161,7 +161,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           href: '/dashboard/ai',
           isNew: true,
         },
-        ...chatSessions.map((session: any) => ({
+        ...[...chatSessions].reverse().map((session: any) => ({
           name: session.title || `채팅 ${session.id}`,
           href: '/dashboard/ai',
           sessionId: session.id,
