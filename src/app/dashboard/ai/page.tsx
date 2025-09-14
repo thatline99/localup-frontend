@@ -202,7 +202,7 @@ export default function AISolutionPage() {
 
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-screen">
       <div className="p-6 border-b">
         {sessionLoading ? (
           <div className="animate-pulse">
@@ -234,11 +234,12 @@ export default function AISolutionPage() {
         )}
       </div>
 
-      <div className="flex-1 flex gap-6 overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
         {/* 채팅 영역 */}
         <div className="flex-1 flex flex-col">
           {/* 메시지 목록 */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col items-center">
+            <div className="w-full max-w-4xl space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -296,25 +297,30 @@ export default function AISolutionPage() {
             )}
             
             <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* 입력 영역 */}
-          <div className="border-t p-4">
+          <div className="border-t p-4 flex justify-center">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex gap-3"
+              className="flex gap-3 items-center w-full max-w-4xl"
             >
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="질문을 입력하세요..."
-                className="flex-1"
+                className="flex-1 h-12"
                 disabled={isLoading}
               />
-              <Button type="submit" disabled={isLoading || !input.trim()}>
+              <Button 
+                type="submit" 
+                disabled={isLoading || !input.trim()}
+                className="h-12 w-16 p-0 flex items-center justify-center"
+              >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
