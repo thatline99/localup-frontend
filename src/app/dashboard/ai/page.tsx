@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, Button, Input } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import useAIStore from '@/store/aiStore';
 
 interface Message {
@@ -29,11 +29,13 @@ export default function AISolutionPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickQuestions = [
-    '오늘의 매출 예측은?',
-    '이번 주 트렌드 분석해줘',
-    '경쟁사 대비 우리 가게 강점은?',
-    '주말 대비 재고 추천해줘',
-    '최근 부정적 리뷰 분석해줘',
+    '오늘 날씨를 고려한 우리 매장 최적 운영 전략과 예상 매출은?',
+    '주변의 고객층과 지역 행사를 기반으로 어떤 홍보를 하면 좋을지 알려줘',
+    '현재의 계절 및 날씨 정보를 기반으로 우리 매장의 업종에 맞는 메뉴 혹은 컨텐츠를 어떻게 구성하면 좋을지 알려줘',
+    '우리 매장 위치와 지역 관광지를 활용한 관광객 유치 방법은?',
+    '현재 평균 객단가 대비 날씨별 메뉴 가격 전략 조정 방안은?',
+    '이번 주말 날씨와 지역 행사를 우리 매장 정보과 함께 조합해서 매출을 증대할 전략을 작성하고 이유도 알려줘',
+    '우리 매장에 대해서 분석해줘',
   ];
 
   const scrollToBottom = () => {
@@ -356,59 +358,6 @@ export default function AISolutionPage() {
               ))}
             </div>
           </div>
-
-          {/* 첨부 파일 */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-neutral-900">첨부 파일</h3>
-              <button className="p-1 hover:bg-neutral-100 rounded-lg">
-                <svg className="w-4 h-4 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
-                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="text-sm text-neutral-900">매출_분석_10월.xlsx</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
-                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm text-neutral-900">매장_내부_사진.jpg</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
-                <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="text-sm text-neutral-900">메뉴판_사진.pdf</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
-                <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="text-sm text-neutral-900">리뷰_키워드_분석.docx</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 최근 인사이트 */}
-          <Card>
-            <CardContent>
-              <h4 className="font-medium text-sm text-neutral-900 mb-2">
-                최근 인사이트
-              </h4>
-              <p className="text-xs text-neutral-600">
-                영화제 기간 동안 저녁 시간대 매출이 평균 23% 증가하는 패턴을 보입니다.
-              </p>
-              <Button variant="ghost" size="sm" className="w-full mt-3">
-                자세히 보기
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
